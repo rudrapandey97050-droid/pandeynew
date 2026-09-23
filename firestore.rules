@@ -1,0 +1,80 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == 'pmesbutwal@gmail.com'
+      );
+    }
+
+    // Public Catalog & Store Information (Anyone can read, only admin can update)
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /rateList/{rateId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /upcomingModels/{modelId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Customer Inquiries & Bookings (Customers can submit requests, admin can view/manage)
+    match /orders/{orderId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /repairBookings/{bookingId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /valuations/{valuationId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /preBookings/{preBookingId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // Secure ERP, Accounting & IMEI Trackers (Restricted strictly to Store Admin)
+    match /accounting/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    match /stockLedger/{document=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // Admin authorization collection
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Default deny for all other paths
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

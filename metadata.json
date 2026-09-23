@@ -1,0 +1,8 @@
+{
+  "name": "Pandey Mobile Store",
+  "description": "Pandey Mobile Store storefront with dedicated Admin Panel and separate ERP Accounting Platform for billing, stock ledger, IMEI tracking, cash and bank accounts, and financial reports.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

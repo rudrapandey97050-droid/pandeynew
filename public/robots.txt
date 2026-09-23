@@ -1,0 +1,13 @@
+# Robots.txt for Pandey Mobile Store, Butwal, Nepal
+User-agent: *
+Allow: /
+Allow: /sitemap.xml
+Allow: /#*
+
+# Internal administrative areas
+Disallow: /admin
+Disallow: /accounting
+Disallow: /api/
+
+# XML Sitemap index
+Sitemap: https://ais-dev-f2dmrx6mghe3c5kyldqcex-799045140383.asia-southeast1.run.app/sitemap.xml

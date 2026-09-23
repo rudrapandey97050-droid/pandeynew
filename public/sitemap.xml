@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+        http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+  
+  <!-- Homepage -->
+  <url>
+    <loc>https://ais-dev-f2dmrx6mghe3c5kyldqcex-799045140383.asia-southeast1.run.app/</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- Smartphone Inventory & Deals -->
+  <url>
+    <loc>https://ais-dev-f2dmrx6mghe3c5kyldqcex-799045140383.asia-southeast1.run.app/#products-section</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Used iPhone & Smartphone Valuation Calculator -->
+  <url>
+    <loc>https://ais-dev-f2dmrx6mghe3c5kyldqcex-799045140383.asia-southeast1.run.app/#valuation</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Express Repair Lab & Diagnostic Center -->
+  <url>
+    <loc>https://ais-dev-f2dmrx6mghe3c5kyldqcex-799045140383.asia-southeast1.run.app/#repair</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Repair Status Tracker -->
+  <url>
+    <loc>https://ais-dev-f2dmrx6mghe3c5kyldqcex-799045140383.asia-southeast1.run.app/#track-repair</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Daily Smartphone & iPhone Rate List -->
+  <url>
+    <loc>https://ais-dev-f2dmrx6mghe3c5kyldqcex-799045140383.asia-southeast1.run.app/#rates</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Upcoming Smartphones & Pre-Bookings -->
+  <url>
+    <loc>https://ais-dev-f2dmrx6mghe3c5kyldqcex-799045140383.asia-southeast1.run.app/#upcoming</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Store Location, Interactive Map & Directions (Butwal) -->
+  <url>
+    <loc>https://ais-dev-f2dmrx6mghe3c5kyldqcex-799045140383.asia-southeast1.run.app/#store-location</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Customer Trust, Guarantees & 32-Point Quality Check -->
+  <url>
+    <loc>https://ais-dev-f2dmrx6mghe3c5kyldqcex-799045140383.asia-southeast1.run.app/#trust</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Customer Portal & Orders -->
+  <url>
+    <loc>https://ais-dev-f2dmrx6mghe3c5kyldqcex-799045140383.asia-southeast1.run.app/#my-orders</loc>
+    <lastmod>2026-09-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+</urlset>
