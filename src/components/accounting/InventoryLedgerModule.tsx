@@ -19,14 +19,17 @@ import {
   Download,
   ArrowDownLeft,
   ArrowUpRight,
-  Mail
+  Mail,
+  Camera,
+  Barcode,
+  X
 } from 'lucide-react';
-import { DataStorageService } from '../../services/dataStorage.ts';
 import { AccountingStorageService } from '../../services/accountingStorage.ts';
 import { Product } from '../../types.ts';
 import { AddProductModal } from './AddProductModal.tsx';
 import { ProductLedgerModal } from './ProductLedgerModal.tsx';
 import { ImeiVaultModule } from './ImeiVaultModule.tsx';
+import { BarcodeScannerModal } from './BarcodeScannerModal.tsx';
 import { ProductLedgerSummary } from '../../types/accounting.ts';
 
 interface InventoryLedgerModuleProps {
@@ -42,9 +45,10 @@ export const InventoryLedgerModule: React.FC<InventoryLedgerModuleProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'stock' | 'imei' | 'valuation' | 'ledger'>('stock');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isBarcodeScanOpen, setIsBarcodeScanOpen] = useState(false);
   const [brandFilter, setBrandFilter] = useState('all');
   const [stockFilter, setStockFilter] = useState<'all' | 'in_stock' | 'out_of_stock'>('all');
-  const [productsList, setProductsList] = useState<Product[]>(DataStorageService.getProducts());
+  const [productsList, setProductsList] = useState<Product[]>(() => AccountingStorageService.getInventoryItems());
   
   // Product add/edit modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(initialAddProductOpen);
@@ -72,10 +76,10 @@ export const InventoryLedgerModule: React.FC<InventoryLedgerModuleProps> = ({
     }
   }, [initialAddProductOpen]);
 
-  // Subscribe to live updates across tabs or modules
+  // Subscribe to live updates within accounting module
   useEffect(() => {
-    const unsub = DataStorageService.subscribeToUpdates(() => {
-      setProductsList(DataStorageService.getProducts());
+    const unsub = AccountingStorageService.subscribe(() => {
+      setProductsList(AccountingStorageService.getInventoryItems());
     });
     return () => unsub();
   }, []);
@@ -85,22 +89,15 @@ export const InventoryLedgerModule: React.FC<InventoryLedgerModuleProps> = ({
   const purchases = AccountingStorageService.getPurchases();
 
   const handleUpdateStock = (productId: string, newStock: number) => {
-    DataStorageService.updateProductStock(productId, newStock);
-    setProductsList(DataStorageService.getProducts());
+    AccountingStorageService.updateInventoryStock(productId, newStock);
+    setProductsList(AccountingStorageService.getInventoryItems());
   };
 
   const handleDeleteProduct = (product: Product) => {
-    const confirmMsg = `के तपाईं '${product.name}' उत्पादन पूर्ण रूपमा हटाउन निश्चित हुनुहुन्छ?\n\nयो वेबसाइट र स्टक खाता दुवैबाट हट्नेछ।`;
+    const confirmMsg = `के तपाईं '${product.name}' उत्पादन खाता प्रणालीको मौज्दातबाट हटाउन निश्चित हुनुहुन्छ?\n\nयो खाताको आन्तरिक स्टक सूचीबाट हट्नेछ। (वेबसाइटमा कुनै असर पर्ने छैन)`;
     if (window.confirm(confirmMsg)) {
-      DataStorageService.deleteProduct(product.id);
-      AccountingStorageService.recordAuditLog(
-        'delete',
-        'inventory',
-        product.id,
-        `Deleted product '${product.name}' from inventory`,
-        'Admin'
-      );
-      setProductsList(DataStorageService.getProducts());
+      AccountingStorageService.deleteInventoryItem(product.id);
+      setProductsList(AccountingStorageService.getInventoryItems());
       setToastMsg(`'${product.name}' सफलतापूर्वक हटाइयो।`);
       setTimeout(() => setToastMsg(''), 3000);
     }
@@ -112,8 +109,8 @@ export const InventoryLedgerModule: React.FC<InventoryLedgerModuleProps> = ({
       stock: targetQty,
       availability: (targetQty > 0 ? (targetQty <= 2 ? 'Limited Stock' : 'In Stock') : 'Out of Stock') as any
     }));
-    DataStorageService.saveProducts(updated);
-    setProductsList(DataStorageService.getProducts());
+    AccountingStorageService.saveInventoryItems(updated);
+    setProductsList(AccountingStorageService.getInventoryItems());
   };
 
   // Search dedicated IMEI vault when user searches by query
@@ -367,9 +364,28 @@ export const InventoryLedgerModule: React.FC<InventoryLedgerModuleProps> = ({
                     placeholder="Search model, brand, phone, IMEI..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900"
+                    className="w-full pl-9 pr-8 py-1.5 bg-white border border-slate-200 rounded-xl text-xs text-slate-900"
                   />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsBarcodeScanOpen(true)}
+                  className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 shrink-0 cursor-pointer shadow-2xs"
+                  title="क्यामराबाट बारकोड वा IMEI स्क्यान गरी खोज्नुहोस्"
+                >
+                  <Camera className="w-4 h-4 text-emerald-600" />
+                  <span className="hidden sm:inline">Scan</span>
+                </button>
 
                 <select
                   value={brandFilter}
@@ -884,7 +900,7 @@ export const InventoryLedgerModule: React.FC<InventoryLedgerModuleProps> = ({
           if (onCloseAddProduct) onCloseAddProduct();
         }}
         onSuccess={(savedProduct) => {
-          setProductsList(DataStorageService.getProducts());
+          setProductsList(AccountingStorageService.getInventoryItems());
           setToastMsg(`'${savedProduct.name}' सफलतापुर्वक सुरक्षित गरियो!`);
           setTimeout(() => setToastMsg(''), 4000);
         }}
@@ -903,6 +919,20 @@ export const InventoryLedgerModule: React.FC<InventoryLedgerModuleProps> = ({
           onClose={() => setLedgerModalProductId(null)}
         />
       )}
+
+      {/* CAMERA BARCODE / IMEI SCANNER MODAL */}
+      <BarcodeScannerModal
+        isOpen={isBarcodeScanOpen}
+        onClose={() => setIsBarcodeScanOpen(false)}
+        onScan={(scanned) => {
+          setSearchQuery(scanned.trim());
+          setToastMsg(`Scanned: ${scanned.trim()}`);
+          setTimeout(() => setToastMsg(''), 3000);
+        }}
+        title="स्टक बारकोड / IMEI स्क्यानर"
+        subtitle="मोबाइल क्यामराबाट फोनको बारकोड वा बक्स स्क्यान गरी मौज्दात जाँच्नुहोस्"
+        placeholderText="बारकोड वा IMEI टाइप गर्नुहोस्..."
+      />
 
     </div>
   );

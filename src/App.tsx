@@ -183,25 +183,32 @@ export const App: React.FC = () => {
       }
     });
 
-    const unsubVal = FirestoreService.subscribeValuations((cloudValuations) => {
-      if (cloudValuations && cloudValuations.length > 0) {
-        DataStorageService.saveValuations(cloudValuations);
-        setValuations(cloudValuations);
-      }
-    });
+    let unsubVal: (() => void) | null = null;
+    let unsubRep: (() => void) | null = null;
+    let unsubPb: (() => void) | null = null;
 
-    const unsubRep = FirestoreService.subscribeRepairs((cloudRepairs) => {
-      if (cloudRepairs && cloudRepairs.length > 0) {
-        DataStorageService.saveRepairBookings(cloudRepairs);
-        setBookings(cloudRepairs);
-      }
-    });
+    // Only authorized admin needs to listen to private customer submissions
+    if (AuthService.isAuthenticated()) {
+      unsubVal = FirestoreService.subscribeValuations((cloudValuations) => {
+        if (cloudValuations && cloudValuations.length > 0) {
+          DataStorageService.saveValuations(cloudValuations);
+          setValuations(cloudValuations);
+        }
+      });
 
-    const unsubPb = FirestoreService.subscribePreBookings((cloudPreBookings) => {
-      if (cloudPreBookings && cloudPreBookings.length > 0) {
-        DataStorageService.savePreBookings(cloudPreBookings);
-      }
-    });
+      unsubRep = FirestoreService.subscribeRepairs((cloudRepairs) => {
+        if (cloudRepairs && cloudRepairs.length > 0) {
+          DataStorageService.saveRepairBookings(cloudRepairs);
+          setBookings(cloudRepairs);
+        }
+      });
+
+      unsubPb = FirestoreService.subscribePreBookings((cloudPreBookings) => {
+        if (cloudPreBookings && cloudPreBookings.length > 0) {
+          DataStorageService.savePreBookings(cloudPreBookings);
+        }
+      });
+    }
 
     // Re-pull live data whenever user switches back to browser tab or comes back online
     const handleRevalidateFocus = () => {

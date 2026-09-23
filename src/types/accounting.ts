@@ -73,6 +73,7 @@ export interface SalesInvoice {
 
 export interface SalesReturnItem {
   id: string;
+  productId?: string;
   productName: string;
   imeiOrSerial?: string;
   qty: number;
@@ -141,6 +142,7 @@ export interface PurchaseInvoice {
 
 export interface PurchaseReturnItem {
   id: string;
+  productId?: string;
   productName: string;
   imeiOrSerial?: string;
   qty: number;
@@ -385,6 +387,7 @@ export interface ImeiVaultItem {
   storage?: string;
   status: 'In Stock' | 'Sold' | 'Under Repair' | 'Reserved';
   purchaseCost?: number;
+  sellingPrice?: number;
   purchaseBill?: string;
   purchaseDate?: string;
   supplierName?: string;

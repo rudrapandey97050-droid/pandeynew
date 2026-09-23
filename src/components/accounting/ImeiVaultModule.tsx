@@ -17,12 +17,14 @@ import {
   X,
   Layers,
   ArrowDownLeft,
-  ArrowUpRight
+  ArrowUpRight,
+  Camera,
+  Barcode
 } from 'lucide-react';
 import { AccountingStorageService } from '../../services/accountingStorage.ts';
-import { DataStorageService } from '../../services/dataStorage.ts';
 import { ImeiVaultItem } from '../../types/accounting.ts';
 import { Product } from '../../types.ts';
+import { BarcodeScannerModal } from './BarcodeScannerModal.tsx';
 
 interface ImeiVaultModuleProps {
   initialSearch?: string;
@@ -32,7 +34,7 @@ export const ImeiVaultModule: React.FC<ImeiVaultModuleProps> = ({
   initialSearch = ''
 }) => {
   const [imeiList, setImeiList] = useState<ImeiVaultItem[]>(() => AccountingStorageService.getImeiVault());
-  const [products, setProducts] = useState<Product[]>(() => DataStorageService.getProducts());
+  const [products, setProducts] = useState<Product[]>(() => AccountingStorageService.getInventoryItems());
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [statusFilter, setStatusFilter] = useState<'all' | 'In Stock' | 'Sold' | 'Under Repair'>('all');
   const [brandFilter, setBrandFilter] = useState('all');
@@ -60,17 +62,35 @@ export const ImeiVaultModule: React.FC<ImeiVaultModuleProps> = ({
   const [formNotes, setFormNotes] = useState('');
   const [formError, setFormError] = useState('');
 
+  // Camera Barcode Scanner State
+  const [scannerTarget, setScannerTarget] = useState<null | 'search' | 'formPrimary' | 'formSecondary'>(null);
+
+  const handleBarcodeScanned = (scannedCode: string) => {
+    const clean = scannedCode.trim();
+    if (!clean) return;
+
+    if (scannerTarget === 'search') {
+      setSearchQuery(clean);
+      showToast(`Scanned IMEI: ${clean}`);
+    } else if (scannerTarget === 'formPrimary') {
+      setFormImei(clean);
+      setFormError('');
+      showToast(`Scanned IMEI: ${clean}`);
+    } else if (scannerTarget === 'formSecondary') {
+      setFormSecondaryImei(clean);
+      showToast(`Scanned Secondary IMEI: ${clean}`);
+    }
+    setScannerTarget(null);
+  };
+
   // Reload on storage changes
   useEffect(() => {
     const unsubAcc = AccountingStorageService.subscribe(() => {
       setImeiList(AccountingStorageService.getImeiVault());
-    });
-    const unsubData = DataStorageService.subscribeToUpdates(() => {
-      setProducts(DataStorageService.getProducts());
+      setProducts(AccountingStorageService.getInventoryItems());
     });
     return () => {
       unsubAcc();
-      unsubData();
     };
   }, []);
 
@@ -401,25 +421,36 @@ export const ImeiVaultModule: React.FC<ImeiVaultModuleProps> = ({
       {/* Search & Filter Bar */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-4 space-y-3">
         <div className="flex flex-col sm:flex-row items-center gap-3">
-          {/* Main Search Input */}
-          <div className="relative flex-1 w-full">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="IMEI नम्बर, सेकेन्डरी IMEI, मोडल, ब्रान्ड वा ग्राहकको नाम खोज्नुहोस्..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-9 py-2 bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-mono transition-colors focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
+          {/* Main Search Input with Barcode Camera Scan */}
+          <div className="relative flex-1 w-full flex items-center space-x-1.5">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="IMEI नम्बर, सेकेन्डरी IMEI, मोडल, ब्रान्ड वा ग्राहकको नाम खोज्नुहोस्..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-9 py-2 bg-slate-50 hover:bg-white focus:bg-white border border-slate-200 rounded-xl text-xs text-slate-900 font-mono transition-colors focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setScannerTarget('search')}
+              className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 shrink-0 cursor-pointer shadow-2xs"
+              title="क्यामराबाट IMEI बारकोड स्क्यान गर्नुहोस्"
+            >
+              <Camera className="w-4 h-4 text-emerald-600" />
+              <span className="hidden sm:inline">Scan IMEI</span>
+            </button>
           </div>
 
           {/* Status Pills */}
@@ -707,30 +738,70 @@ export const ImeiVaultModule: React.FC<ImeiVaultModuleProps> = ({
               {/* IMEI Number */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    IMEI नम्बर <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. 359123456789012"
-                    value={formImei}
-                    onChange={(e) => setFormImei(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:ring-1 focus:ring-indigo-500"
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-slate-700">
+                      IMEI नम्बर <span className="text-rose-500">*</span>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setScannerTarget('formPrimary')}
+                      className="text-[11px] text-emerald-700 hover:text-emerald-800 font-bold flex items-center space-x-1 cursor-pointer"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Scan Barcode</span>
+                    </button>
+                  </div>
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. 359123456789012"
+                      value={formImei}
+                      onChange={(e) => setFormImei(e.target.value)}
+                      className="w-full pl-3 pr-8 py-2 bg-white border border-slate-300 rounded-xl font-mono font-bold text-slate-900 focus:ring-1 focus:ring-indigo-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setScannerTarget('formPrimary')}
+                      className="absolute right-2 text-slate-400 hover:text-emerald-600 p-0.5 rounded cursor-pointer"
+                      title="Scan IMEI with camera"
+                    >
+                      <Camera className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Secondary IMEI / SIM 2 (ऐच्छिक)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 359123456789013"
-                    value={formSecondaryImei}
-                    onChange={(e) => setFormSecondaryImei(e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl font-mono text-slate-800 focus:ring-1 focus:ring-indigo-500"
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-slate-700">
+                      Secondary IMEI / SIM 2 (ऐच्छिक)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setScannerTarget('formSecondary')}
+                      className="text-[11px] text-emerald-700 hover:text-emerald-800 font-bold flex items-center space-x-1 cursor-pointer"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Scan</span>
+                    </button>
+                  </div>
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      placeholder="e.g. 359123456789013"
+                      value={formSecondaryImei}
+                      onChange={(e) => setFormSecondaryImei(e.target.value)}
+                      className="w-full pl-3 pr-8 py-2 bg-white border border-slate-300 rounded-xl font-mono text-slate-800 focus:ring-1 focus:ring-indigo-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setScannerTarget('formSecondary')}
+                      className="absolute right-2 text-slate-400 hover:text-emerald-600 p-0.5 rounded cursor-pointer"
+                      title="Scan Secondary IMEI with camera"
+                    >
+                      <Camera className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -891,6 +962,22 @@ export const ImeiVaultModule: React.FC<ImeiVaultModuleProps> = ({
           </div>
         </div>
       )}
+
+      {/* CAMERA BARCODE / IMEI SCANNER MODAL */}
+      <BarcodeScannerModal
+        isOpen={scannerTarget !== null}
+        onClose={() => setScannerTarget(null)}
+        onScan={handleBarcodeScanned}
+        title={
+          scannerTarget === 'search'
+            ? 'IMEI बारकोड स्क्यानर (Search Handset)'
+            : scannerTarget === 'formSecondary'
+            ? 'Secondary IMEI स्क्यानर'
+            : 'IMEI बारकोड स्क्यानर'
+        }
+        subtitle="मोबाइल क्यामरालाई फोनको बक्स वा बारकोडमा देखाउनुहोस्"
+        placeholderText="IMEI वा बारकोड नम्बर प्रविष्ट गर्नुहोस्..."
+      />
 
     </div>
   );

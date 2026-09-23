@@ -17,10 +17,11 @@ import {
   X,
   CreditCard,
   Download,
-  Edit3
+  Edit3,
+  Camera,
+  Barcode
 } from 'lucide-react';
 import { AccountingStorageService } from '../../services/accountingStorage.ts';
-import { DataStorageService } from '../../services/dataStorage.ts';
 import {
   SalesInvoice,
   SalesInvoiceItem,
@@ -32,6 +33,8 @@ import {
 } from '../../types/accounting.ts';
 import { Product } from '../../types.ts';
 import { BillPrintSetupModal } from './BillPrintSetupModal.tsx';
+import { ProductSearchSelect } from './ProductSearchSelect.tsx';
+import { BarcodeScannerModal } from './BarcodeScannerModal.tsx';
 
 interface SalesModuleProps {
   onViewInvoice: (invoice: SalesInvoice) => void;
@@ -60,7 +63,8 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
   const parties = AccountingStorageService.getParties('customer');
   const accounts = AccountingStorageService.getAccounts();
   const settings = AccountingStorageService.getSettings();
-  const storeProducts = DataStorageService.getProducts();
+  const [inventoryVersion, setInventoryVersion] = useState(0);
+  const storeProducts = useMemo(() => AccountingStorageService.getInventoryItems(), [inventoryVersion]);
 
   // --- NEW INVOICE FORM STATE ---
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
@@ -147,6 +151,26 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
     setItems(updated);
   };
 
+  const handleSelectProduct = (index: number, prod: Product) => {
+    const updated = [...items];
+    const item = { ...updated[index] };
+    if (prod.id) {
+      item.productId = prod.id;
+      item.productName = prod.name;
+      item.brand = prod.brand || 'Apple';
+      item.model = prod.model || prod.name;
+      item.rate = prod.discountPrice || prod.price;
+      item.purchaseCost = Math.round((prod.discountPrice || prod.price) * 0.85);
+    } else {
+      item.productId = '';
+    }
+    const itemSub = (item.qty || 1) * (item.rate || 0);
+    const itemDisc = Number(item.discount || 0);
+    item.totalAmount = Math.max(0, itemSub - itemDisc);
+    updated[index] = item;
+    setItems(updated);
+  };
+
   const addItemRow = () => {
     setItems([
       ...items,
@@ -166,6 +190,127 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
         totalAmount: 0
       }
     ]);
+  };
+
+  // Barcode & Camera Scanner State
+  const [barcodeScanTarget, setBarcodeScanTarget] = useState<{
+    isOpen: boolean;
+    mode: 'add-product' | 'imei-row';
+    rowIndex: number;
+  }>({
+    isOpen: false,
+    mode: 'add-product',
+    rowIndex: -1
+  });
+
+  const handleBarcodeScanned = (scannedCode: string) => {
+    const cleanCode = scannedCode.trim();
+    if (!cleanCode) return;
+
+    if (barcodeScanTarget.mode === 'imei-row' && barcodeScanTarget.rowIndex >= 0) {
+      // Direct IMEI fill into the target row
+      const targetIdx = barcodeScanTarget.rowIndex;
+      updateItem(targetIdx, 'imeiOrSerial', cleanCode);
+
+      // If product name is blank, check if it exists in IMEI vault
+      const currentItem = items[targetIdx];
+      if (!currentItem.productName) {
+        const vaultItem = AccountingStorageService.getImeiVault().find(
+          v => v.imei?.toLowerCase() === cleanCode.toLowerCase() || v.secondaryImei?.toLowerCase() === cleanCode.toLowerCase()
+        );
+        if (vaultItem) {
+          updateItem(targetIdx, 'productName', vaultItem.productName);
+          if (vaultItem.brand) updateItem(targetIdx, 'brand', vaultItem.brand);
+          if (vaultItem.sellingPrice) {
+            updateItem(targetIdx, 'rate', vaultItem.sellingPrice);
+          } else if (vaultItem.purchaseCost) {
+            updateItem(targetIdx, 'rate', Math.round(vaultItem.purchaseCost * 1.15));
+          }
+        }
+      }
+    } else {
+      // General barcode or IMEI scan: add to line items
+      const q = cleanCode.toLowerCase();
+      const matchedProd = storeProducts.find(p =>
+        p.id.toLowerCase() === q ||
+        p.name?.toLowerCase().includes(q) ||
+        (p.model && p.model.toLowerCase().includes(q))
+      );
+
+      const vaultItem = AccountingStorageService.getImeiVault().find(
+        v => v.imei?.toLowerCase() === q || v.secondaryImei?.toLowerCase() === q
+      );
+
+      const firstIsBlank = items.length === 1 && !items[0].productName && !items[0].imeiOrSerial;
+
+      if (matchedProd) {
+        const newRow: SalesInvoiceItem = {
+          id: `item_${Date.now()}`,
+          productId: matchedProd.id,
+          productName: matchedProd.name,
+          brand: matchedProd.brand || 'Apple',
+          model: matchedProd.model || matchedProd.name,
+          imeiOrSerial: '',
+          warrantyMonths: 12,
+          qty: 1,
+          rate: matchedProd.discountPrice || matchedProd.price,
+          purchaseCost: Math.round((matchedProd.discountPrice || matchedProd.price) * 0.85),
+          discount: 0,
+          taxPercent: 0,
+          taxAmount: 0,
+          totalAmount: matchedProd.discountPrice || matchedProd.price
+        };
+        if (firstIsBlank) {
+          setItems([newRow]);
+        } else {
+          setItems(prev => [...prev, newRow]);
+        }
+      } else if (vaultItem) {
+        const rate = vaultItem.sellingPrice || (vaultItem.purchaseCost ? Math.round(vaultItem.purchaseCost * 1.15) : 0);
+        const newRow: SalesInvoiceItem = {
+          id: `item_${Date.now()}`,
+          productId: vaultItem.productId || '',
+          productName: vaultItem.productName,
+          brand: vaultItem.brand || 'Apple',
+          model: vaultItem.productName,
+          imeiOrSerial: vaultItem.imei,
+          warrantyMonths: 12,
+          qty: 1,
+          rate: rate,
+          purchaseCost: vaultItem.purchaseCost || 0,
+          discount: 0,
+          taxPercent: 0,
+          taxAmount: 0,
+          totalAmount: rate
+        };
+        if (firstIsBlank) {
+          setItems([newRow]);
+        } else {
+          setItems(prev => [...prev, newRow]);
+        }
+      } else {
+        const newRow: SalesInvoiceItem = {
+          id: `item_${Date.now()}`,
+          productName: cleanCode,
+          brand: 'Apple',
+          model: '',
+          imeiOrSerial: cleanCode,
+          warrantyMonths: 12,
+          qty: 1,
+          rate: 0,
+          purchaseCost: 0,
+          discount: 0,
+          taxPercent: 0,
+          taxAmount: 0,
+          totalAmount: 0
+        };
+        if (firstIsBlank) {
+          setItems([newRow]);
+        } else {
+          setItems(prev => [...prev, newRow]);
+        }
+      }
+    }
   };
 
   const removeItemRow = (idx: number) => {
@@ -856,20 +1001,31 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
 
               {/* Items Table */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
                     Invoice Items & Handset Details (सामान तथा फोनको विवरण)
                   </h4>
-                  <button
-                    type="button"
-                    onClick={addItemRow}
-                    className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                  >
-                    + Add More Item Row
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setBarcodeScanTarget({ isOpen: true, mode: 'add-product', rowIndex: -1 })}
+                      className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center space-x-1.5 shadow-2xs"
+                      title="Scan Barcode or IMEI with Mobile Camera (क्यामराबाट स्क्यान)"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Scan Barcode / IMEI</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={addItemRow}
+                      className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      + Add More Item Row
+                    </button>
+                  </div>
                 </div>
 
-                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <div className="border border-slate-200 rounded-xl overflow-visible min-h-[220px]">
                   <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
@@ -892,38 +1048,39 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
                           <td className="py-2 px-3 text-center text-slate-400 font-bold">{idx + 1}</td>
                           
                           {/* Product Selection */}
-                          <td className="py-2 px-3 space-y-1">
-                            <select
-                              value={item.productId || ''}
-                              onChange={(e) => updateItem(idx, 'productId', e.target.value)}
-                              className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-[11px]"
-                            >
-                              <option value="">-- Choose Store Phone or Type Manual --</option>
-                              {storeProducts.map(p => (
-                                <option key={p.id} value={p.id}>
-                                  {p.name} (Stock: {p.stock || 0}) - Rs.{p.discountPrice || p.price}
-                                </option>
-                              ))}
-                            </select>
-                            <input
-                              type="text"
-                              required
-                              placeholder="Product Name (e.g. iPhone 15 Pro Max 256GB)"
-                              value={item.productName}
-                              onChange={(e) => updateItem(idx, 'productName', e.target.value)}
-                              className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs font-semibold"
+                          <td className="py-2 px-3 min-w-[260px] align-top">
+                            <ProductSearchSelect
+                              selectedProductId={item.productId}
+                              productName={item.productName}
+                              products={storeProducts}
+                              onSelectProduct={(prod) => handleSelectProduct(idx, prod)}
+                              onManualNameChange={(name) => updateItem(idx, 'productName', name)}
+                              onProductCreated={(newProd) => {
+                                setInventoryVersion((v) => v + 1);
+                                handleSelectProduct(idx, newProd);
+                              }}
                             />
                           </td>
 
                           {/* IMEI / Serial (Optional) */}
                           <td className="py-2 px-3">
-                            <input
-                              type="text"
-                              placeholder="Optional (IMEI / SN)"
-                              value={item.imeiOrSerial || ''}
-                              onChange={(e) => updateItem(idx, 'imeiOrSerial', e.target.value)}
-                              className="w-full px-2 py-1 bg-white border border-slate-200 rounded text-xs font-mono"
-                            />
+                            <div className="relative flex items-center">
+                              <input
+                                type="text"
+                                placeholder="Optional (IMEI / SN)"
+                                value={item.imeiOrSerial || ''}
+                                onChange={(e) => updateItem(idx, 'imeiOrSerial', e.target.value)}
+                                className="w-full pl-2 pr-7 py-1 bg-white border border-slate-200 rounded text-xs font-mono"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setBarcodeScanTarget({ isOpen: true, mode: 'imei-row', rowIndex: idx })}
+                                className="absolute right-1 text-slate-400 hover:text-emerald-600 p-0.5 rounded hover:bg-emerald-50 transition-colors cursor-pointer"
+                                title="क्यामराबाट IMEI स्क्यान गर्नुहोस्"
+                              >
+                                <Camera className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </td>
 
                           {/* Warranty Months */}
@@ -1112,6 +1269,20 @@ export const SalesModule: React.FC<SalesModuleProps> = ({
           setShowPrintSetupModal(false);
           onViewInvoice(sample);
         }}
+      />
+
+      {/* MOBILE CAMERA BARCODE & IMEI SCANNER MODAL */}
+      <BarcodeScannerModal
+        isOpen={barcodeScanTarget.isOpen}
+        onClose={() => setBarcodeScanTarget(prev => ({ ...prev, isOpen: false }))}
+        onScan={handleBarcodeScanned}
+        title={barcodeScanTarget.mode === 'imei-row' ? 'IMEI Barcode Scanner' : 'Barcode & IMEI Scanner'}
+        subtitle={
+          barcodeScanTarget.mode === 'imei-row'
+            ? 'मोबाइलको बक्स वा फोनबाट सिधै IMEI स्क्यान गर्नुहोस्'
+            : 'बारकोड वा IMEI स्क्यान गरी बिलमा तुरुन्त सामान थप्नुहोस्'
+        }
+        placeholderText="बारकोड वा IMEI टाइप गर्नुहोस्..."
       />
 
     </div>

@@ -15,7 +15,6 @@ import {
   Mail
 } from 'lucide-react';
 import { AccountingStorageService } from '../../services/accountingStorage.ts';
-import { DataStorageService } from '../../services/dataStorage.ts';
 
 type ReportType =
   | 'pl'
@@ -50,7 +49,7 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({ onOpenGmailReport 
   const customers = AccountingStorageService.getParties('customer');
   const suppliers = AccountingStorageService.getParties('supplier');
   const settings = AccountingStorageService.getSettings();
-  const products = DataStorageService.getProducts();
+  const products = AccountingStorageService.getInventoryItems();
 
   const handlePrint = () => {
     window.print();

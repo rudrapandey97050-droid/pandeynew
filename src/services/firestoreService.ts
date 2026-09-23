@@ -74,8 +74,8 @@ export class FirestoreService {
           onUpdate(items);
         }
       }, (err) => {
-        // Silently handle transient offline / unavailable states without throwing unhandled exceptions
-        if (err?.code !== 'unavailable') {
+        // Silently handle transient offline, unavailable or unauthenticated states without throwing unhandled exceptions
+        if (err?.code !== 'unavailable' && err?.code !== 'permission-denied') {
           console.warn('Firestore: Valuations listener error', err);
         }
       });
@@ -114,8 +114,8 @@ export class FirestoreService {
           onUpdate(items);
         }
       }, (err) => {
-        // Silently handle transient offline / unavailable states without throwing unhandled exceptions
-        if (err?.code !== 'unavailable') {
+        // Silently handle transient offline, unavailable or unauthenticated states without throwing unhandled exceptions
+        if (err?.code !== 'unavailable' && err?.code !== 'permission-denied') {
           console.warn('Firestore: Repairs listener error', err);
         }
       });
@@ -154,8 +154,8 @@ export class FirestoreService {
           onUpdate(items);
         }
       }, (err) => {
-        // Silently handle transient offline / unavailable states without throwing unhandled exceptions
-        if (err?.code !== 'unavailable') {
+        // Silently handle transient offline, unavailable or unauthenticated states without throwing unhandled exceptions
+        if (err?.code !== 'unavailable' && err?.code !== 'permission-denied') {
           console.warn('Firestore: PreBookings listener error', err);
         }
       });
@@ -388,8 +388,10 @@ export class FirestoreService {
       }
 
       return true;
-    } catch (e) {
-      console.warn('Firestore: pullLiveStorefrontData non-blocking note:', e);
+    } catch (e: any) {
+      if (e?.code !== 'unavailable' && e?.code !== 'permission-denied') {
+        console.warn('Firestore: pullLiveStorefrontData non-blocking note:', e);
+      }
       return false;
     }
   }

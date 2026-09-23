@@ -121,7 +121,7 @@ export class GmailStockReportService {
    * Compile complete real-time stock and movement data from local accounting and inventory
    */
   static generateStockReportData(): DailyStockReportData {
-    const products = DataStorageService.getProducts();
+    const products = AccountingStorageService.getInventoryItems();
     const storeSettings = DataStorageService.getStoreSettings();
     const accountingSettings = AccountingStorageService.getSettings();
     const todayStr = new Date().toISOString().slice(0, 10);

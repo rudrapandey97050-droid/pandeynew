@@ -30,7 +30,6 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { AccountingStorageService } from '../../services/accountingStorage.ts';
-import { DataStorageService } from '../../services/dataStorage.ts';
 import { ProductLedgerModal } from './ProductLedgerModal.tsx';
 import { AccountingParty, SalesInvoice, BankAccount } from '../../types/accounting.ts';
 import { Product } from '../../types.ts';
@@ -67,7 +66,7 @@ export const AccountingDashboard: React.FC<AccountingDashboardProps> = ({
     return () => unsub();
   }, []);
 
-  const allProducts: Product[] = useMemo(() => DataStorageService.getProducts(), []);
+  const allProducts: Product[] = useMemo(() => AccountingStorageService.getInventoryItems(), []);
   
   // All parties (customers & suppliers) and accounts
   const customers = useMemo(() => AccountingStorageService.getParties('customer'), []);

@@ -12,10 +12,17 @@ import {
   deleteDoc,
   onSnapshot,
   memoryLocalCache,
-  getDocFromServer
+  setLogLevel
 } from 'firebase/firestore';
 
 import appletConfig from '../../firebase-applet-config.json';
+
+// Suppress noisy internal offline/unavailable transient warnings
+try {
+  setLogLevel('error');
+} catch {
+  // ignore
+}
 
 // Decoupled optional Firebase configuration with auto-detection from applet config
 export const firebaseConfig: Record<string, any> = {
@@ -39,9 +46,10 @@ try {
     const dbId = (firebaseConfig as { firestoreDatabaseId?: string }).firestoreDatabaseId || '(default)';
 
     try {
-      // Use memoryLocalCache to eliminate offline persistence lock and ensure fresh data on every page reload
+      // Use experimentalForceLongPolling to guarantee rock-solid connectivity
+      // across Cloud Run, sandboxed iframes, proxies, and preview environments.
       db = initializeFirestore(app, {
-        experimentalAutoDetectLongPolling: true,
+        experimentalForceLongPolling: true,
         localCache: memoryLocalCache(),
       }, dbId);
     } catch {
@@ -52,13 +60,15 @@ try {
   console.warn('Firebase optional initialization bypassed:', err);
 }
 
-// Check connection to Firestore backend gracefully
+// Check connection to Firestore backend gracefully with timeout and non-blocking fallback
 export async function testFirestoreConnection(): Promise<boolean> {
   if (!db) return false;
   try {
-    await getDocFromServer(doc(db, 'settings', 'store'));
-    return true;
-  } catch (error) {
+    const checkPromise = getDoc(doc(db, 'settings', 'store'));
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
+    const res = await Promise.race([checkPromise, timeoutPromise]);
+    return res !== null;
+  } catch {
     return false;
   }
 }

@@ -13,7 +13,6 @@ import {
   Image as ImageIcon
 } from 'lucide-react';
 import { Product, ProductCondition, ProductAvailability } from '../../types.ts';
-import { DataStorageService } from '../../services/dataStorage.ts';
 import { AccountingStorageService } from '../../services/accountingStorage.ts';
 
 interface AddProductModalProps {
@@ -89,8 +88,6 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   const [image, setImage] = useState(editingProduct?.image || SAMPLE_IMAGES[0].url);
   const [description, setDescription] = useState(editingProduct?.description || '');
   const [initialImei, setInitialImei] = useState('');
-  const [showOnStorefront, setShowOnStorefront] = useState(!editingProduct?.isHidden);
-  
   const [errorMsg, setErrorMsg] = useState('');
 
   if (!isOpen) return null;
@@ -134,7 +131,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
 
     try {
       if (isEditing && editingProduct) {
-        const updated = DataStorageService.updateProduct(editingProduct.id, {
+        const updated = AccountingStorageService.updateInventoryItem(editingProduct.id, {
           name: name.trim(),
           brand: finalBrand,
           category,
@@ -151,21 +148,13 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
           availability,
           warranty,
           image: image.trim() || SAMPLE_IMAGES[0].url,
-          description: description.trim(),
-          isHidden: !showOnStorefront
+          description: description.trim()
         });
-
-        AccountingStorageService.recordAuditLog(
-          'edit',
-          'inventory',
-          editingProduct.id,
-          `Updated product '${name}' in inventory (Price: Rs. ${finalPrice}, Stock: ${finalStock})`,
-          'Admin'
-        );
 
         if (updated) onSuccess(updated);
       } else {
-        const newProductData = {
+        const newProductData: Product = {
+          id: 'acc_prod_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
           name: name.trim(),
           brand: finalBrand,
           category,
@@ -182,11 +171,10 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
           availability,
           warranty,
           image: image.trim() || SAMPLE_IMAGES[0].url,
-          description: description.trim(),
-          isHidden: !showOnStorefront
+          description: description.trim()
         };
 
-        const created = DataStorageService.addProduct(newProductData);
+        const created = AccountingStorageService.saveInventoryItem(newProductData);
 
         // If user entered initial IMEI, record into Accounting Purchases/Stock Registry
         if (initialImei.trim()) {
@@ -619,21 +607,20 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
             </div>
 
             {/* Storefront visibility */}
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
+            {/* Private Accounting Ledger Indicator */}
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between">
               <div>
-                <span className="text-xs font-bold text-slate-900 block">
-                  Show on Website Storefront (वेबसाइटमा प्रदर्शन गर्नुहोस्)
+                <span className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5 text-emerald-600" />
+                  निजी खाता तथा मौज्दात (Private Accounting Item)
                 </span>
-                <span className="text-[11px] text-slate-500 block">
-                  यो अन गर्दा ग्राहकहरूले पसलको वेबसाइटमा यो फोन देख्न सक्नेछन्।
+                <span className="text-[11px] text-emerald-700 block mt-0.5">
+                  यो सामान आन्तरिक खाता प्रणाली (ERP) मा मात्र सुरक्षित रहनेछ, वेबसाइटमा सिंक हुँदैन।
                 </span>
               </div>
-              <input
-                type="checkbox"
-                checked={showOnStorefront}
-                onChange={(e) => setShowOnStorefront(e.target.checked)}
-                className="w-5 h-5 text-purple-600 rounded border-slate-300 focus:ring-purple-500 cursor-pointer"
-              />
+              <span className="px-2 py-0.5 text-[10px] font-bold bg-emerald-100 text-emerald-800 rounded-md">
+                100% Isolated
+              </span>
             </div>
           </div>
 

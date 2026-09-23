@@ -24,7 +24,6 @@ import { AuthService } from '../../services/authService.ts';
 import { UserService } from '../../services/userService.ts';
 import { DataStorageService } from '../../services/dataStorage.ts';
 import { FirestoreService } from '../../services/firestoreService.ts';
-import { AccountingStorageService } from '../../services/accountingStorage.ts';
 
 export type AdminTab =
   | 'valuations'
@@ -265,17 +264,8 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
       return bDate === todayStr;
     });
 
-    // 4. Today's Invoices & Sales from Accounting System
-    let todaySalesTotal = 0;
-    let todaySalesCount = 0;
-    try {
-      const sales = AccountingStorageService.getSalesInvoices();
-      const todaySales = sales.filter(s => s.invoiceDate === todayStr);
-      todaySalesCount = todaySales.length;
-      todaySalesTotal = todaySales.reduce((acc, s) => acc + s.grandTotal, 0);
-    } catch {
-      // fallback
-    }
+    // 4. Website Active Showcase Catalog
+    const inStockCatalogCount = products.filter(p => (p.stock || 0) > 0).length;
 
     return {
       todayStr,
@@ -284,8 +274,8 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
       outOfStockItems,
       todayValuations,
       todayRepairs,
-      todaySalesCount,
-      todaySalesTotal
+      inStockCatalogCount,
+      totalCatalogCount: products.length
     };
   }, [products, valuations, bookings, todayStr]);
 
@@ -878,16 +868,16 @@ export const QuickActions: React.FC<QuickActionsProps> = ({
               {/* Row 1: KPI Cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 
-                {/* 1. Today Sales */}
+                {/* 1. Website Catalog Showcase */}
                 <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl">
                   <div className="flex items-center justify-between text-emerald-800 text-xs font-bold mb-1">
-                    <span>Today&apos;s Sales</span>
+                    <span>Store Catalog</span>
                     <TrendingUp className="w-4 h-4 text-emerald-600" />
                   </div>
                   <p className="text-lg font-black font-mono text-emerald-950">
-                    Rs. {todayReport.todaySalesTotal.toLocaleString()}
+                    {todayReport.inStockCatalogCount} <span className="text-xs font-normal text-slate-500">/ {todayReport.totalCatalogCount}</span>
                   </p>
-                  <span className="text-[10px] text-emerald-700">{todayReport.todaySalesCount} बिल जारी गरिएको</span>
+                  <span className="text-[10px] text-emerald-700">वेबसाइटमा मौज्दात रहेका मोडेल</span>
                 </div>
 
                 {/* 2. Today Valuations */}

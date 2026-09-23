@@ -21,7 +21,8 @@ import {
   ProductLedgerSummary,
   ImeiVaultItem
 } from '../types/accounting.ts';
-import { DataStorageService } from './dataStorage.ts';
+import { Product } from '../types.ts';
+import { initialProducts } from '../data/products.ts';
 
 const ACC_KEYS = {
   PARTIES: 'pms_acc_parties_v1',
@@ -38,7 +39,8 @@ const ACC_KEYS = {
   USERS: 'pms_acc_users_v1',
   AUDIT_LOGS: 'pms_acc_audit_logs_v1',
   ACTIVE_USER_SESSION: 'pms_acc_active_user_v1',
-  IMEI_VAULT: 'pms_acc_imei_vault_v1'
+  IMEI_VAULT: 'pms_acc_imei_vault_v1',
+  INVENTORY: 'pms_acc_inventory_items_v1'
 };
 
 const DEFAULT_SETTINGS: AccountingSettings = {
@@ -473,15 +475,15 @@ export class AccountingStorageService {
       this.adjustAccountBalance(ret.paymentAccountId, -ret.totalRefundAmount);
     }
 
-    // Increase returned stock
-    const products = DataStorageService.getProducts();
+    // Increase returned stock in Accounting Inventory (Completely segregated from web)
+    const items = this.getInventoryItems();
     ret.items.forEach(item => {
-      const found = products.find(p => p.name.toLowerCase().includes(item.productName.toLowerCase()));
+      const found = items.find(p => (item.productId && p.id === item.productId) || p.name.toLowerCase().includes(item.productName.toLowerCase()));
       if (found) {
         found.stock = (found.stock || 0) + item.qty;
       }
     });
-    DataStorageService.saveProducts(products);
+    this.saveInventoryItems(items, user);
 
     this.recordAuditLog(
       'create',
@@ -669,15 +671,15 @@ export class AccountingStorageService {
       }
     }
 
-    // Deduct stock
-    const products = DataStorageService.getProducts();
+    // Deduct stock in Accounting Inventory (Completely segregated from web)
+    const items = this.getInventoryItems();
     ret.items.forEach(item => {
-      const found = products.find(p => p.name.toLowerCase().includes(item.productName.toLowerCase()));
+      const found = items.find(p => (item.productId && p.id === item.productId) || p.name.toLowerCase().includes(item.productName.toLowerCase()));
       if (found) {
         found.stock = Math.max(0, (found.stock || 0) - item.qty);
       }
     });
-    DataStorageService.saveProducts(products);
+    this.saveInventoryItems(items, user);
 
     this.recordAuditLog(
       'create',
@@ -901,9 +903,108 @@ export class AccountingStorageService {
     localStorage.setItem(ACC_KEYS.AUDIT_LOGS, JSON.stringify(trimmed));
   }
 
-  // --- INVENTORY HELPERS (INTEGRATED WITH WEBSITE PRODUCTS) ---
+  // --- DEDICATED ACCOUNTING INVENTORY & ITEMS (100% ISOLATED FROM WEBSITE) ---
+  static getInventoryItems(): Product[] {
+    try {
+      const data = localStorage.getItem(ACC_KEYS.INVENTORY);
+      if (!data) {
+        // Initialize an independent clone for accounting so it doesn't touch storefront
+        const initialClone: Product[] = JSON.parse(JSON.stringify(initialProducts));
+        localStorage.setItem(ACC_KEYS.INVENTORY, JSON.stringify(initialClone));
+        return initialClone;
+      }
+      return JSON.parse(data);
+    } catch (e) {
+      console.error('Error reading accounting inventory items', e);
+      return [];
+    }
+  }
+
+  static saveInventoryItems(items: Product[], actor = 'admin'): void {
+    try {
+      localStorage.setItem(ACC_KEYS.INVENTORY, JSON.stringify(items));
+      this.recordAuditLog('edit', 'inventory', 'bulk', `Saved ${items.length} accounting inventory items`, actor);
+      this.notifyChange();
+    } catch (e) {
+      console.error('Error saving accounting inventory items', e);
+    }
+  }
+
+  static saveInventoryItem(item: Product, actor = 'admin'): Product {
+    try {
+      const items = this.getInventoryItems();
+      const existingIndex = items.findIndex(i => i.id === item.id);
+      if (existingIndex >= 0) {
+        items[existingIndex] = item;
+        this.recordAuditLog('edit', 'inventory', item.id, `Updated accounting item: ${item.name}`, actor);
+      } else {
+        items.unshift(item);
+        this.recordAuditLog('create', 'inventory', item.id, `Created accounting item: ${item.name}`, actor);
+      }
+      localStorage.setItem(ACC_KEYS.INVENTORY, JSON.stringify(items));
+      this.notifyChange();
+      return item;
+    } catch (e) {
+      console.error('Error saving accounting inventory item', e);
+      return item;
+    }
+  }
+
+  static updateInventoryItem(id: string, updates: Partial<Product>, actor = 'admin'): Product | null {
+    try {
+      const items = this.getInventoryItems();
+      const index = items.findIndex(i => i.id === id);
+      if (index === -1) return null;
+      const updated = { ...items[index], ...updates };
+      items[index] = updated;
+      localStorage.setItem(ACC_KEYS.INVENTORY, JSON.stringify(items));
+      this.recordAuditLog('edit', 'inventory', id, `Updated accounting item: ${updated.name}`, actor);
+      this.notifyChange();
+      return updated;
+    } catch (e) {
+      console.error('Error updating accounting inventory item', e);
+      return null;
+    }
+  }
+
+  static deleteInventoryItem(id: string, actor = 'admin'): boolean {
+    try {
+      const items = this.getInventoryItems();
+      const target = items.find(i => i.id === id);
+      const filtered = items.filter(i => i.id !== id);
+      localStorage.setItem(ACC_KEYS.INVENTORY, JSON.stringify(filtered));
+      this.recordAuditLog('delete', 'inventory', id, `Deleted accounting item: ${target?.name || id}`, actor);
+      this.notifyChange();
+      return true;
+    } catch (e) {
+      console.error('Error deleting accounting inventory item', e);
+      return false;
+    }
+  }
+
+  static updateInventoryStock(id: string, newStock: number, actor = 'admin'): void {
+    try {
+      const items = this.getInventoryItems();
+      const index = items.findIndex(i => i.id === id);
+      if (index === -1) return;
+      const current = items[index];
+      const validStock = Math.max(0, newStock);
+      items[index] = {
+        ...current,
+        stock: validStock,
+        availability: validStock > 0 ? (current.availability === 'Out of Stock' ? 'In Stock' : current.availability) : 'Out of Stock'
+      };
+      localStorage.setItem(ACC_KEYS.INVENTORY, JSON.stringify(items));
+      this.recordAuditLog('edit', 'inventory', id, `Adjusted accounting stock for ${current.name} to ${validStock}`, actor);
+      this.notifyChange();
+    } catch (e) {
+      console.error('Error updating accounting inventory stock', e);
+    }
+  }
+
+  // --- INTERNAL INVENTORY HELPERS (AFFECTS ONLY ACCOUNTING LEDGER) ---
   private static decrementProductInventory(items: { productId?: string; productName: string; qty: number }[]): void {
-    const products = DataStorageService.getProducts();
+    const products = this.getInventoryItems();
     let changed = false;
 
     items.forEach(item => {
@@ -918,12 +1019,12 @@ export class AccountingStorageService {
     });
 
     if (changed) {
-      DataStorageService.saveProducts(products);
+      this.saveInventoryItems(products, 'system-sales');
     }
   }
 
   private static incrementProductInventory(items: { productId?: string; productName: string; qty: number; brand?: string; purchaseCost?: number; expectedSellingPrice?: number }[]): void {
-    const products = DataStorageService.getProducts();
+    const products = this.getInventoryItems();
     let changed = false;
 
     items.forEach(item => {
@@ -937,7 +1038,8 @@ export class AccountingStorageService {
       } else if (item.productName && item.productName.trim()) {
         const cost = item.purchaseCost || 0;
         const retail = item.expectedSellingPrice || (cost > 0 ? Math.round(cost * 1.15) : 10000);
-        DataStorageService.addProduct({
+        const newItem: Product = {
+          id: 'acc_item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
           name: item.productName.trim(),
           brand: item.brand || 'Apple',
           category: 'Smartphones',
@@ -949,12 +1051,14 @@ export class AccountingStorageService {
           image: 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=800&auto=format&fit=crop&q=80',
           warranty: '1 Year Brand Warranty',
           description: `Imported via Purchase Invoice on ${new Date().toLocaleDateString()}`
-        });
+        };
+        products.unshift(newItem);
+        changed = true;
       }
     });
 
     if (changed) {
-      DataStorageService.saveProducts(products);
+      this.saveInventoryItems(products, 'system-purchase');
     }
   }
 
@@ -1109,7 +1213,7 @@ export class AccountingStorageService {
 
   // --- PRODUCT LEDGER GENERATION (ITEM STOCK STATEMENT / BIN CARD) ---
   static getProductLedger(productId: string): ProductLedgerSummary | null {
-    const products = DataStorageService.getProducts();
+    const products = this.getInventoryItems();
     const product = products.find(p => p.id === productId);
     if (!product) return null;
 

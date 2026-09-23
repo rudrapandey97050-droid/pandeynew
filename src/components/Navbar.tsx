@@ -5,7 +5,9 @@ import {
   ShoppingBag,
   Menu,
   X,
-  RefreshCw
+  RefreshCw,
+  History,
+  Clock
 } from 'lucide-react';
 import { StoreSettings } from '../types.ts';
 import { DataStorageService } from '../services/dataStorage.ts';
@@ -43,6 +45,88 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [searchOpen, setSearchOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Recent searches state (tracks user's last 5 searched keywords)
+  const [recentSearches, setRecentSearches] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const stored = localStorage.getItem('pms_recent_searches');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          return parsed
+            .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+            .slice(0, 5);
+        }
+      }
+    } catch (e) {
+      console.warn('Error reading recent searches:', e);
+    }
+    return [];
+  });
+
+  const [isDesktopSearchFocused, setIsDesktopSearchFocused] = useState(false);
+  const [isMobileSearchFocused, setIsMobileSearchFocused] = useState(false);
+
+  // Save / track a searched keyword into history (max 5, most recent first)
+  const saveRecentSearch = (query: string) => {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    setRecentSearches((prev) => {
+      const filtered = prev.filter((item) => item.toLowerCase() !== trimmed.toLowerCase());
+      const updated = [trimmed, ...filtered].slice(0, 5);
+      try {
+        localStorage.setItem('pms_recent_searches', JSON.stringify(updated));
+      } catch (e) {
+        console.warn('Error saving recent search:', e);
+      }
+      return updated;
+    });
+  };
+
+  // Remove a single searched keyword from history
+  const removeRecentSearch = (keyword: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    setRecentSearches((prev) => {
+      const updated = prev.filter((item) => item.toLowerCase() !== keyword.toLowerCase());
+      try {
+        localStorage.setItem('pms_recent_searches', JSON.stringify(updated));
+      } catch (e) {
+        console.warn('Error removing recent search:', e);
+      }
+      return updated;
+    });
+  };
+
+  // Clear all recent searches
+  const clearRecentSearches = (e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    setRecentSearches([]);
+    try {
+      localStorage.removeItem('pms_recent_searches');
+    } catch (e) {
+      console.warn('Error clearing recent searches:', e);
+    }
+  };
+
+  // Select a recent search item
+  const handleSelectRecentSearch = (term: string) => {
+    saveRecentSearch(term);
+    onSearchChange(term);
+    setIsDesktopSearchFocused(false);
+    setIsMobileSearchFocused(false);
+    setSearchOpen(false);
+    setMobileMenuOpen(false);
+    if (onScrollToProducts) {
+      onScrollToProducts();
+    }
+  };
 
   // Dynamic live in-stock products and upcoming models
   const products = useMemo(() => DataStorageService.getProducts(), [activeTab, isRefreshing]);
@@ -112,6 +196,9 @@ export const Navbar: React.FC<NavbarProps> = ({
       onSelectCategory(options.category);
     }
     if (options.search !== undefined) {
+      if (options.search.trim()) {
+        saveRecentSearch(options.search);
+      }
       onSearchChange(options.search);
     }
     if (options.modal === 'valuation') {
@@ -303,7 +390,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               <button
-                onClick={() => setSearchOpen(!searchOpen)}
+                onClick={() => {
+                  const nextState = !searchOpen;
+                  setSearchOpen(nextState);
+                  if (nextState) {
+                    setIsDesktopSearchFocused(true);
+                  } else {
+                    setIsDesktopSearchFocused(false);
+                  }
+                }}
                 className="hover:text-black transition-colors cursor-pointer"
                 title="Search phones"
               >
@@ -1358,29 +1453,87 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Search Bar Overlay */}
         {searchOpen && (
           <div className="bg-white border-b border-[#d2d2d7] px-4 py-4 animate-in fade-in duration-150">
-            <div className="max-w-[700px] mx-auto relative flex items-center">
-              <Search className="w-4 h-4 text-[#86868b] absolute left-3" />
-              <input
-                type="text"
-                autoFocus
-                placeholder="Search for iPhone, Samsung, chargers, or repairs..."
-                value={searchQuery}
-                onChange={(e) => onSearchChange(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    setSearchOpen(false);
-                    if (onScrollToProducts) onScrollToProducts();
-                  }
-                }}
-                className="w-full bg-[#f5f5f7] text-[#1d1d1f] text-sm pl-10 pr-10 py-2.5 rounded-xl border border-[#d2d2d7] focus:outline-hidden focus:border-[#0071e3] placeholder-[#86868b]"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => onSearchChange('')}
-                  className="absolute right-3 text-[#86868b] hover:text-[#1d1d1f] text-xs font-medium"
+            <div className="max-w-[700px] mx-auto relative">
+              <div className="relative flex items-center">
+                <Search className="w-4 h-4 text-[#86868b] absolute left-3" />
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Search for iPhone, Samsung, chargers, or repairs..."
+                  value={searchQuery}
+                  onFocus={() => setIsDesktopSearchFocused(true)}
+                  onBlur={() => {
+                    setTimeout(() => setIsDesktopSearchFocused(false), 250);
+                  }}
+                  onChange={(e) => onSearchChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (searchQuery.trim()) {
+                        saveRecentSearch(searchQuery);
+                      }
+                      setSearchOpen(false);
+                      setIsDesktopSearchFocused(false);
+                      if (onScrollToProducts) onScrollToProducts();
+                    } else if (e.key === 'Escape') {
+                      setIsDesktopSearchFocused(false);
+                      setSearchOpen(false);
+                    }
+                  }}
+                  className="w-full bg-[#f5f5f7] text-[#1d1d1f] text-sm pl-10 pr-10 py-2.5 rounded-xl border border-[#d2d2d7] focus:outline-hidden focus:border-[#0071e3] placeholder-[#86868b]"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => onSearchChange('')}
+                    className="absolute right-3 text-[#86868b] hover:text-[#1d1d1f] text-xs font-medium cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+
+              {/* Recent Searches Dropdown List */}
+              {isDesktopSearchFocused && recentSearches.length > 0 && (
+                <div
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-[#d2d2d7] overflow-hidden z-50 animate-in fade-in slide-in-from-top-1 duration-150"
                 >
-                  Clear
-                </button>
+                  <div className="flex items-center justify-between px-4 py-2.5 bg-[#fbfbfd] border-b border-[#f0f0f2]">
+                    <div className="flex items-center space-x-1.5 text-[#86868b] text-[11px] font-semibold uppercase tracking-wider">
+                      <History className="w-3.5 h-3.5 text-[#86868b]" />
+                      <span>Recent Searches</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={clearRecentSearches}
+                      className="text-[11px] text-[#86868b] hover:text-[#e03131] transition-colors cursor-pointer font-medium"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                  <div className="py-1">
+                    {recentSearches.map((term, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => handleSelectRecentSearch(term)}
+                        className="flex items-center justify-between px-4 py-2.5 text-xs text-[#1d1d1f] hover:bg-[#f5f5f7] cursor-pointer transition-colors group"
+                      >
+                        <div className="flex items-center space-x-2.5 truncate">
+                          <Clock className="w-3.5 h-3.5 text-[#86868b] shrink-0 group-hover:text-[#0071e3] transition-colors" />
+                          <span className="font-medium truncate">{term}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => removeRecentSearch(term, e)}
+                          className="text-[#86868b] hover:text-[#1d1d1f] p-1 rounded-md hover:bg-black/5 transition-colors cursor-pointer"
+                          title="Remove from history"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           </div>
@@ -1392,14 +1545,85 @@ export const Navbar: React.FC<NavbarProps> = ({
             
             {/* Search Input */}
             <div className="relative">
-              <Search className="w-4 h-4 text-[#86868b] absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search store..."
-                value={searchQuery}
-                onChange={(e) => onSearchChange(e.target.value)}
-                className="w-full bg-[#f5f5f7] text-[#1d1d1f] text-xs pl-9 pr-3 py-2.5 rounded-xl border border-[#d2d2d7]"
-              />
+              <div className="relative flex items-center">
+                <Search className="w-4 h-4 text-[#86868b] absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search store..."
+                  value={searchQuery}
+                  onFocus={() => setIsMobileSearchFocused(true)}
+                  onBlur={() => {
+                    setTimeout(() => setIsMobileSearchFocused(false), 250);
+                  }}
+                  onChange={(e) => onSearchChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (searchQuery.trim()) {
+                        saveRecentSearch(searchQuery);
+                      }
+                      setMobileMenuOpen(false);
+                      setIsMobileSearchFocused(false);
+                      if (onScrollToProducts) onScrollToProducts();
+                    } else if (e.key === 'Escape') {
+                      setIsMobileSearchFocused(false);
+                    }
+                  }}
+                  className="w-full bg-[#f5f5f7] text-[#1d1d1f] text-xs pl-9 pr-8 py-2.5 rounded-xl border border-[#d2d2d7]"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => onSearchChange('')}
+                    className="absolute right-2.5 text-[#86868b] hover:text-[#1d1d1f] text-xs font-medium cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+
+              {/* Mobile Recent Searches Dropdown */}
+              {isMobileSearchFocused && recentSearches.length > 0 && (
+                <div
+                  onMouseDown={(e) => e.preventDefault()}
+                  className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-[#d2d2d7] overflow-hidden z-50 animate-in fade-in duration-150"
+                >
+                  <div className="flex items-center justify-between px-3.5 py-2 bg-[#fbfbfd] border-b border-[#f0f0f2]">
+                    <div className="flex items-center space-x-1.5 text-[#86868b] text-[11px] font-semibold uppercase tracking-wider">
+                      <History className="w-3 h-3 text-[#86868b]" />
+                      <span>Recent Searches</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={clearRecentSearches}
+                      className="text-[11px] text-[#86868b] hover:text-[#e03131] font-medium cursor-pointer"
+                    >
+                      Clear All
+                    </button>
+                  </div>
+                  <div className="py-1">
+                    {recentSearches.map((term, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => handleSelectRecentSearch(term)}
+                        className="flex items-center justify-between px-3.5 py-2.5 text-xs text-[#1d1d1f] hover:bg-[#f5f5f7] cursor-pointer group"
+                      >
+                        <div className="flex items-center space-x-2 truncate">
+                          <Clock className="w-3.5 h-3.5 text-[#86868b] shrink-0 group-hover:text-[#0071e3]" />
+                          <span className="font-medium truncate">{term}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => removeRecentSearch(term, e)}
+                          className="text-[#86868b] hover:text-[#1d1d1f] p-1 cursor-pointer"
+                          title="Remove from history"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Mobile Nav Links */}
