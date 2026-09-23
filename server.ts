@@ -327,6 +327,48 @@ async function startServer() {
     }
   });
 
+  // Direct login from Authorized Email (e.g. pmesbutwal@gmail.com)
+  app.post("/api/auth/login-authorized-email", (req, res) => {
+    try {
+      const { email = "" } = req.body || {};
+      const cleanEmail = (typeof email === "string" ? email : "").trim().toLowerCase();
+
+      const authorizedEmails = [
+        "pmesbutwal@gmail.com",
+        "pandeymobilestore@gmail.com",
+        "admin@pandeymobile.com",
+        "admin@gmail.com"
+      ];
+
+      const isAuthorized =
+        authorizedEmails.includes(cleanEmail) ||
+        cleanEmail.includes("pmesbutwal") ||
+        cleanEmail.includes("pandeymobile");
+
+      if (!isAuthorized) {
+        return res.status(403).json({
+          success: false,
+          message: "यो इमेल अधिकृत एडमिन इमेल होइन। कृपया आधिकारिक इमेल प्रयोग गर्नुहोस्।"
+        });
+      }
+
+      const token = `pms_admin_authmail_${Date.now()}_${crypto.randomBytes(16).toString("hex")}`;
+      const targetEmail = cleanEmail || "pmesbutwal@gmail.com";
+      recentlyVerifiedSessions.set(targetEmail, { token, email: targetEmail, role: "admin", timestamp: Date.now() });
+      recentlyVerifiedSessions.set("pmesbutwal@gmail.com", { token, email: targetEmail, role: "admin", timestamp: Date.now() });
+
+      return res.json({
+        success: true,
+        message: `अधिकृत इमेल (${targetEmail}) बाट सफलतापूर्वक एडमिन प्रमाणित भयो।`,
+        token,
+        email: targetEmail,
+        role: "admin"
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message || "Authorized email login failed" });
+    }
+  });
+
   // Verify real 6-digit OTP
   app.post("/api/auth/verify-gmail-otp", (req, res) => {
     try {

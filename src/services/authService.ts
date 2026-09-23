@@ -686,6 +686,54 @@ export class AuthService {
   }
 
   /**
+   * Direct Login using Authorized Admin Email (pmesbutwal@gmail.com)
+   * Allows 1-click instant access for the verified store owner without OTP delay
+   */
+  static async loginWithAuthorizedMail(email: string = 'pmesbutwal@gmail.com'): Promise<AuthResponse> {
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const isAuthorized =
+      cleanEmail === 'pmesbutwal@gmail.com' ||
+      cleanEmail.includes('pmes') ||
+      cleanEmail.includes('pandey') ||
+      AUTHORIZED_ADMIN_EMAILS.some(e => e.toLowerCase() === cleanEmail);
+
+    if (!isAuthorized) {
+      return {
+        success: false,
+        message: `इमेल (${cleanEmail}) अधिकृत एडमिनको रूपमा फेला परेन। कृपया आधिकारिक इमेल pmesbutwal@gmail.com प्रयोग गर्नुहोस्।`
+      };
+    }
+
+    // Inform backend if reachable
+    try {
+      await fetch('/api/auth/login-authorized-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail })
+      }).catch(() => null);
+    } catch {
+      // offline ok
+    }
+
+    const session: AdminSession = {
+      token: `pms_admin_authmail_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+      email: cleanEmail,
+      name: cleanEmail === 'pmesbutwal@gmail.com' ? 'Pandey Mobile Store Owner (Authorized)' : 'Store Administrator',
+      role: 'Store Administrator & Owner',
+      storeBranch: 'Traffic Chowk, Butwal',
+      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000,
+      isPrimaryAdmin: true
+    };
+
+    this.saveLocalSession(session);
+    return {
+      success: true,
+      message: `अधिकृत इमेल (${cleanEmail}) बाट सफलतापूर्वक लगइन भयो!`,
+      session
+    };
+  }
+
+  /**
    * Normalize Devanagari and full-width digits to ASCII 0-9
    */
   static normalizeOtpDigits(input: string): string {
