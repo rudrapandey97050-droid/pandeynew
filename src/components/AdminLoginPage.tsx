@@ -559,9 +559,19 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
                           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
-                      <p className="mt-1.2 text-[11px] text-slate-500">
-                        आफ्नो व्यक्तिगत सुरक्षा पासवर्ड प्रविष्ट गर्नुहोस्।
-                      </p>
+                      <div className="mt-2 p-2 rounded bg-slate-50 border border-slate-200 text-[11px] text-slate-600 flex items-center justify-between">
+                        <span>डिफल्ट लगइन: <strong>admin</strong> | <strong>pandey123</strong> वा <strong>998877</strong></span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAccountInput('admin');
+                            setPassword('998877');
+                          }}
+                          className="text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer text-[11px]"
+                        >
+                          स्वतः भर्नुहोस्
+                        </button>
+                      </div>
                     </div>
 
                     <button
@@ -658,10 +668,47 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
                   </button>
                 </div>
 
-                <div className="mb-5 p-3 rounded-lg bg-slate-50 border border-slate-200/80 text-xs">
+                <div className="mb-4 p-3 rounded-lg bg-slate-50 border border-slate-200/80 text-xs">
                   <div className="text-slate-500 text-[11px]">कोड पठाइएको इमेल:</div>
                   <div className="font-semibold text-slate-800 mt-0.5">
                     {targetEmail || 'pmesbutwal@gmail.com'}
+                  </div>
+                </div>
+
+                {/* Instant Master PIN / Bypass Option */}
+                <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="font-semibold block text-amber-950">ओटिपी आउन ढिला भयो?</span>
+                      <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
+                        जिमेलको <strong>Spam / Junk</strong> फोल्डर हेर्नुहोस्, वा कुर्नु नपरेर आपतकालीन मास्टर पिन <strong>998877</strong> बाट सिधै लगइन गर्नुहोस्।
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-2.5 flex items-center gap-2">
+                    <button
+                      id="btn-use-master-pin"
+                      type="button"
+                      onClick={() => {
+                        const masterCode = '998877';
+                        setOtpDigits(masterCode.split(''));
+                        handleVerifyOtp(masterCode);
+                      }}
+                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-md text-xs transition-colors cursor-pointer shadow-2xs"
+                    >
+                      मास्टर पिन (998877) बाट सिधै खोल्नुहोस्
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStep('credentials');
+                        setLoginMethod('instant');
+                        setErrorMessage('');
+                      }}
+                      className="px-2.5 py-1.5 bg-white border border-amber-300 hover:bg-amber-100 text-amber-900 font-medium rounded-md text-xs transition-colors cursor-pointer"
+                    >
+                      पासवर्ड लगइन
+                    </button>
                   </div>
                 </div>
 
