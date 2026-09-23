@@ -14,6 +14,7 @@ import { Hero } from './components/Hero.tsx';
 import { ProductSection } from './components/ProductSection.tsx';
 import { RepairSection } from './components/RepairSection.tsx';
 import { WhyPandeySection } from './components/WhyPandeySection.tsx';
+import { CustomerReviews } from './components/CustomerReviews.tsx';
 import { GoogleMapsStoreLocator } from './components/GoogleMapsStoreLocator.tsx';
 import { Footer } from './components/Footer.tsx';
 import { FloatingWhatsApp } from './components/FloatingWhatsApp.tsx';
@@ -524,6 +525,12 @@ export const App: React.FC = () => {
       <WhyPandeySection
         storeSettings={storeSettings}
         onOpenValuationModal={() => handleOpenValuation('sell')}
+      />
+
+      {/* Customer Reviews & Testimonials (Social Proof from Firestore) */}
+      <CustomerReviews
+        onOpenValuationModal={() => handleOpenValuation('sell')}
+        onOpenRepairModal={handleOpenRepair}
       />
 
       {/* Google Maps Store Location Section */}

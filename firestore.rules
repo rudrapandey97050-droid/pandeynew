@@ -57,6 +57,13 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
+    // Customer Reviews & Testimonials (Public read for homepage social proof, visitors can submit, admin can manage)
+    match /customerReviews/{reviewId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if isAdmin();
+    }
+
     // Secure ERP, Accounting & IMEI Trackers (Restricted strictly to Store Admin)
     match /accounting/{document=**} {
       allow read, write: if isAdmin();

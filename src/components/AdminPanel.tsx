@@ -40,6 +40,7 @@ import { SecurityPinManager } from './admin/SecurityPinManager.tsx';
 import { UserManager } from './admin/UserManager.tsx';
 import { LineupManager } from './admin/LineupManager.tsx';
 import { GoogleSheetsManager } from './admin/GoogleSheetsManager.tsx';
+import { QuickActions } from './admin/QuickActions.tsx';
 import { AccountingPlatform } from './accounting/AccountingPlatform.tsx';
 
 interface AdminPanelProps {
@@ -620,6 +621,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
         {/* Tab Content with RBAC Protection */}
         <div className="p-6 flex-1 space-y-6">
+          {/* QuickActions Component - Shortcut buttons for common tasks (Only visible to authenticated admins) */}
+          <QuickActions
+            products={products}
+            valuations={valuations}
+            bookings={bookings}
+            onDataRefresh={onDataRefresh}
+            onNavigateTab={(tab) => setActiveTab(tab)}
+            onOpenAccounting={canAccessAccounting ? handleOpenAccounting : undefined}
+          />
+
           {!isTabAllowed(activeTab) ? (
             <div className="p-8 max-w-lg mx-auto text-center space-y-4 bg-white rounded-2xl border border-slate-200 shadow-sm mt-12">
               <div className="w-14 h-14 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto">

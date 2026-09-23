@@ -12,12 +12,14 @@ import {
   PopupSettings,
   PreBookingStatus,
   FullAppBackupData,
-  RestoreResult
+  RestoreResult,
+  CustomerReview
 } from '../types.ts';
 import { initialProducts } from '../data/products.ts';
 import { initialUsedIPhoneRateList } from '../data/nepalPriceList.ts';
 import { initialStoreSettings } from '../data/storeSettings.ts';
 import { initialUpcomingModels, initialPopupSettings } from '../data/upcomingModels.ts';
+import { initialCustomerReviews } from '../data/initialReviews.ts';
 import { FirestoreService } from './firestoreService.ts';
 
 const STORAGE_KEYS = {
@@ -32,6 +34,7 @@ const STORAGE_KEYS = {
   PRE_BOOKINGS: 'pms_pre_bookings_v1',
   POPUP_SETTINGS: 'pms_popup_settings_v1',
   POPUP_DISMISSED: 'pms_popup_dismissed_session_v1',
+  CUSTOMER_REVIEWS: 'pms_customer_reviews_v1',
   LAST_SYNC: 'pms_last_sync_timestamp'
 };
 
@@ -900,6 +903,48 @@ export class DataStorageService {
       console.error('Error resetting popup dismissed', e);
     }
   }
+
+  // ==========================================
+  // CUSTOMER REVIEWS & TESTIMONIALS
+  // ==========================================
+  static getCustomerReviews(): CustomerReview[] {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.CUSTOMER_REVIEWS);
+      if (!stored) {
+        this.saveCustomerReviews(initialCustomerReviews);
+        return initialCustomerReviews;
+      }
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : initialCustomerReviews;
+    } catch (e) {
+      console.error('Error reading customer reviews', e);
+      return initialCustomerReviews;
+    }
+  }
+
+  static saveCustomerReviews(reviews: CustomerReview[]): void {
+    try {
+      localStorage.setItem(STORAGE_KEYS.CUSTOMER_REVIEWS, JSON.stringify(reviews));
+      notifyDataChange('reviews');
+    } catch (e) {
+      console.error('Error saving customer reviews', e);
+    }
+  }
+
+  static addCustomerReview(review: Omit<CustomerReview, 'id' | 'createdAt'>): CustomerReview {
+    const reviews = this.getCustomerReviews();
+    const id = `rev_${Date.now()}_${Math.floor(100 + Math.random() * 900)}`;
+    const newRecord: CustomerReview = {
+      ...review,
+      id,
+      createdAt: new Date().toISOString()
+    };
+    reviews.unshift(newRecord);
+    this.saveCustomerReviews(reviews);
+    FirestoreService.saveCustomerReview(newRecord).catch(() => {});
+    return newRecord;
+  }
+
 
   // ==========================================
   // ONE-CLICK ALL BACKUP & RESTORE ENGINE

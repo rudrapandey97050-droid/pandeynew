@@ -414,4 +414,23 @@ export interface StoreUser {
   avatarColor?: string;
 }
 
+export type ReviewServiceType = 'Purchase' | 'Exchange' | 'Repair' | 'General';
+
+export interface CustomerReview {
+  id: string;
+  customerName: string;
+  location?: string;
+  rating: number; // 1 to 5
+  reviewText: string;
+  serviceType: ReviewServiceType;
+  deviceModel?: string;
+  date: string; // YYYY-MM-DD or readable date
+  isVerifiedBuyer?: boolean;
+  avatarUrl?: string;
+  createdAt?: string;
+  syncedAt?: string;
+  replyFromOwner?: string;
+  replyDate?: string;
+}
+
 

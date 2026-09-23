@@ -57,7 +57,7 @@ const DEFAULT_SETTINGS: AccountingSettings = {
   enableVat: false,
   vatRate: 13,
   panNumber: '601234567',
-  companyName: 'Pandey Mobile Store & Care',
+  companyName: 'Pandey Mobile electic and electronic suppliers',
   address: 'Traffic Chowk, Butwal, Rupandehi, Nepal',
   phone: '9857055743',
   email: 'pmesbutwal@gmail.com',
@@ -158,7 +158,11 @@ export class AccountingStorageService {
     try {
       const data = localStorage.getItem(ACC_KEYS.SETTINGS);
       if (data) {
-        return { ...DEFAULT_SETTINGS, ...JSON.parse(data) };
+        const parsed = JSON.parse(data);
+        if (parsed.companyName === 'Pandey Mobile Store & Care') {
+          parsed.companyName = 'Pandey Mobile electic and electronic suppliers';
+        }
+        return { ...DEFAULT_SETTINGS, ...parsed };
       }
     } catch (e) {
       console.error('Error reading accounting settings', e);

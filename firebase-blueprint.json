@@ -1,0 +1,74 @@
+{
+  "entities": {
+    "customerReview": {
+      "title": "Customer Review",
+      "description": "Customer feedback, testimonials and ratings for social proof",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerName": { "type": "string", "maxLength": 100 },
+        "location": { "type": "string", "maxLength": 100 },
+        "rating": { "type": "number" },
+        "reviewText": { "type": "string", "maxLength": 1000 },
+        "serviceType": { "type": "string", "enum": ["Purchase", "Exchange", "Repair", "General"] },
+        "deviceModel": { "type": "string", "maxLength": 100 },
+        "date": { "type": "string" },
+        "isVerifiedBuyer": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "customerName", "rating", "reviewText"]
+    },
+    "product": {
+      "title": "Product",
+      "description": "Store smartphone or accessory product",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "brand": { "type": "string" },
+        "price": { "type": "number" }
+      },
+      "required": ["id", "name", "brand", "price"]
+    },
+    "repairBooking": {
+      "title": "Repair Booking",
+      "description": "Customer repair service request",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerName": { "type": "string" },
+        "phone": { "type": "string" }
+      },
+      "required": ["id", "customerName"]
+    },
+    "valuation": {
+      "title": "Phone Valuation",
+      "description": "Customer sell/exchange appraisal submission",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerName": { "type": "string" },
+        "mobileNumber": { "type": "string" }
+      },
+      "required": ["id"]
+    }
+  },
+  "firestore": {
+    "/customerReviews/{reviewId}": {
+      "schema": "customerReview",
+      "description": "Customer reviews and testimonials displayed for social proof on the storefront homepage"
+    },
+    "/products/{productId}": {
+      "schema": "product",
+      "description": "Inventory catalog of smartphones and accessories"
+    },
+    "/repairBookings/{bookingId}": {
+      "schema": "repairBooking",
+      "description": "Repair appointments and service tracking"
+    },
+    "/valuations/{valuationId}": {
+      "schema": "valuation",
+      "description": "Instant phone sell and trade-in appraisals"
+    }
+  }
+}

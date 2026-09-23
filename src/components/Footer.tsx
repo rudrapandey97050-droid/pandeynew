@@ -110,6 +110,12 @@ export const Footer: React.FC<FooterProps> = ({
                   Browse Smartphones & Accessories
                 </a>
               </li>
+              <li>
+                <a href="#customer-reviews" className="hover:text-white transition-colors flex items-center space-x-1.5">
+                  <span>Customer Reviews (सामाजिक विश्वास)</span>
+                  <span className="text-[10px] bg-indigo-500/30 text-indigo-300 px-1.5 py-0.5 rounded-md font-bold">4.9 ★</span>
+                </a>
+              </li>
             </ul>
           </div>
 

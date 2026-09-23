@@ -18,7 +18,8 @@ import {
   StoreSettings,
   UpcomingModel,
   PreBookingRequest,
-  CustomerOrder
+  CustomerOrder,
+  CustomerReview
 } from '../types.ts';
 import { DataStorageService } from './dataStorage.ts';
 
@@ -252,6 +253,62 @@ export class FirestoreService {
     }
   }
 
+  // --- Customer Reviews & Testimonials ---
+  static async saveCustomerReview(review: CustomerReview): Promise<void> {
+    if (!db) return;
+    try {
+      const ref = doc(db, 'customerReviews', review.id);
+      await setDoc(ref, {
+        ...review,
+        syncedAt: new Date().toISOString(),
+        cloudTimestamp: serverTimestamp()
+      }, { merge: true });
+    } catch (error: any) {
+      if (error?.code !== 'unavailable') {
+        console.warn('Firestore: Error saving customer review to cloud', error);
+      }
+    }
+  }
+
+  static async fetchCustomerReviews(): Promise<CustomerReview[]> {
+    if (!db) return [];
+    try {
+      const snap = await getDocs(collection(db, 'customerReviews'));
+      const list: CustomerReview[] = [];
+      snap.forEach((docSnap) => {
+        list.push(docSnap.data() as CustomerReview);
+      });
+      return list;
+    } catch (err: any) {
+      if (err?.code !== 'unavailable') {
+        console.warn('Firestore: Error fetching customer reviews', err);
+      }
+      return [];
+    }
+  }
+
+  static subscribeCustomerReviews(onUpdate: (reviews: CustomerReview[]) => void): Unsubscribe | null {
+    if (!db) return null;
+    try {
+      const colRef = collection(db, 'customerReviews');
+      return onSnapshot(colRef, (snapshot) => {
+        const items: CustomerReview[] = [];
+        snapshot.forEach((docSnap) => {
+          items.push(docSnap.data() as CustomerReview);
+        });
+        if (items.length > 0) {
+          onUpdate(items);
+        }
+      }, (err) => {
+        if (err?.code !== 'unavailable') {
+          console.warn('Firestore: Customer reviews listener error', err);
+        }
+      });
+    } catch (e) {
+      return null;
+    }
+  }
+
   // --- Full Cloud Sync (Push all local data to Firestore) ---
   static async pushAllToCloud(): Promise<{ success: boolean; count: number; message: string }> {
     if (!db) {
@@ -310,6 +367,13 @@ export class FirestoreService {
       const settings = DataStorageService.getStoreSettings();
       await this.saveStoreSettings(settings);
       count++;
+
+      // 8. Customer Reviews
+      const reviews = DataStorageService.getCustomerReviews();
+      for (const rev of reviews) {
+        await this.saveCustomerReview(rev);
+        count++;
+      }
 
       return {
         success: true,
@@ -379,6 +443,16 @@ export class FirestoreService {
       const setDocSnap = await getDoc(doc(db, 'settings', 'store'));
       if (setDocSnap.exists()) {
         DataStorageService.saveStoreSettings(setDocSnap.data() as StoreSettings);
+      }
+
+      // 6. Customer Reviews
+      const revDocs = await getDocs(collection(db, 'customerReviews'));
+      if (!revDocs.empty) {
+        const cloudReviews: CustomerReview[] = [];
+        revDocs.forEach((d) => cloudReviews.push(d.data() as CustomerReview));
+        if (cloudReviews.length > 0) {
+          DataStorageService.saveCustomerReviews(cloudReviews);
+        }
       }
 
       return {
