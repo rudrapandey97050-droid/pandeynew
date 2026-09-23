@@ -9,9 +9,9 @@ import {
   setDoc,
   getDoc,
   getDocs,
+  deleteDoc,
   onSnapshot,
-  persistentLocalCache,
-  persistentMultipleTabManager,
+  memoryLocalCache,
   getDocFromServer
 } from 'firebase/firestore';
 
@@ -39,11 +39,10 @@ try {
     const dbId = (firebaseConfig as { firestoreDatabaseId?: string }).firestoreDatabaseId || '(default)';
 
     try {
+      // Use memoryLocalCache to eliminate offline persistence lock and ensure fresh data on every page reload
       db = initializeFirestore(app, {
         experimentalAutoDetectLongPolling: true,
-        localCache: persistentLocalCache({
-          tabManager: persistentMultipleTabManager(),
-        }),
+        localCache: memoryLocalCache(),
       }, dbId);
     } catch {
       db = getFirestore(app, dbId);
@@ -60,9 +59,6 @@ export async function testFirestoreConnection(): Promise<boolean> {
     await getDocFromServer(doc(db, 'settings', 'store'));
     return true;
   } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn('Firestore: Client is operating in offline cache mode.');
-    }
     return false;
   }
 }
@@ -84,4 +80,4 @@ export const getCachedAccessToken = (): string | null => {
 };
 
 export { app, auth, db };
-export { collection, doc, setDoc, getDoc, getDocs, onSnapshot };
+export { collection, doc, setDoc, getDoc, getDocs, deleteDoc, onSnapshot };

@@ -202,6 +202,28 @@ export class FirestoreService {
     }
   }
 
+  static subscribeProducts(onUpdate: (products: Product[]) => void): Unsubscribe | null {
+    if (!db) return null;
+    try {
+      const colRef = collection(db, 'products');
+      return onSnapshot(colRef, (snapshot) => {
+        const items: Product[] = [];
+        snapshot.forEach((docSnap) => {
+          items.push(docSnap.data() as Product);
+        });
+        if (items.length > 0) {
+          onUpdate(items);
+        }
+      }, (err) => {
+        if (err?.code !== 'unavailable') {
+          console.warn('Firestore: Products listener error', err);
+        }
+      });
+    } catch {
+      return null;
+    }
+  }
+
   // --- Rate List ---
   static async saveRateListItem(item: RateListItem): Promise<void> {
     if (!db) return;
@@ -225,6 +247,28 @@ export class FirestoreService {
     }
   }
 
+  static subscribeRateList(onUpdate: (items: RateListItem[]) => void): Unsubscribe | null {
+    if (!db) return null;
+    try {
+      const colRef = collection(db, 'rateList');
+      return onSnapshot(colRef, (snapshot) => {
+        const items: RateListItem[] = [];
+        snapshot.forEach((docSnap) => {
+          items.push(docSnap.data() as RateListItem);
+        });
+        if (items.length > 0) {
+          onUpdate(items);
+        }
+      }, (err) => {
+        if (err?.code !== 'unavailable') {
+          console.warn('Firestore: RateList listener error', err);
+        }
+      });
+    } catch {
+      return null;
+    }
+  }
+
   // --- Upcoming Models ---
   static async saveUpcomingModel(model: UpcomingModel): Promise<void> {
     if (!db) return;
@@ -239,6 +283,28 @@ export class FirestoreService {
     }
   }
 
+  static subscribeUpcomingModels(onUpdate: (models: UpcomingModel[]) => void): Unsubscribe | null {
+    if (!db) return null;
+    try {
+      const colRef = collection(db, 'upcomingModels');
+      return onSnapshot(colRef, (snapshot) => {
+        const items: UpcomingModel[] = [];
+        snapshot.forEach((docSnap) => {
+          items.push(docSnap.data() as UpcomingModel);
+        });
+        if (items.length > 0) {
+          onUpdate(items);
+        }
+      }, (err) => {
+        if (err?.code !== 'unavailable') {
+          console.warn('Firestore: UpcomingModels listener error', err);
+        }
+      });
+    } catch {
+      return null;
+    }
+  }
+
   // --- Store Settings ---
   static async saveStoreSettings(settings: StoreSettings): Promise<void> {
     if (!db) return;
@@ -250,6 +316,81 @@ export class FirestoreService {
       }, { merge: true });
     } catch (error) {
       console.warn('Firestore: Error saving store settings to cloud', error);
+    }
+  }
+
+  static subscribeStoreSettings(onUpdate: (settings: StoreSettings) => void): Unsubscribe | null {
+    if (!db) return null;
+    try {
+      const docRef = doc(db, 'settings', 'store');
+      return onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+          onUpdate(docSnap.data() as StoreSettings);
+        }
+      }, (err) => {
+        if (err?.code !== 'unavailable') {
+          console.warn('Firestore: StoreSettings listener error', err);
+        }
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  // --- Live Online Storefront Pull on Page Mount / Refresh ---
+  static async pullLiveStorefrontData(): Promise<boolean> {
+    if (!db) return false;
+    try {
+      // 1. Fetch live products from cloud
+      const prodDocs = await getDocs(collection(db, 'products'));
+      if (!prodDocs.empty) {
+        const cloudProducts: Product[] = [];
+        prodDocs.forEach((d) => cloudProducts.push(d.data() as Product));
+        if (cloudProducts.length > 0) {
+          DataStorageService.saveProducts(cloudProducts);
+        }
+      }
+
+      // 2. Fetch live rate list from cloud
+      const rateDocs = await getDocs(collection(db, 'rateList'));
+      if (!rateDocs.empty) {
+        const cloudRates: RateListItem[] = [];
+        rateDocs.forEach((d) => cloudRates.push(d.data() as RateListItem));
+        if (cloudRates.length > 0) {
+          DataStorageService.saveRateList(cloudRates);
+        }
+      }
+
+      // 3. Fetch live upcoming models from cloud
+      const upDocs = await getDocs(collection(db, 'upcomingModels'));
+      if (!upDocs.empty) {
+        const cloudUpcoming: UpcomingModel[] = [];
+        upDocs.forEach((d) => cloudUpcoming.push(d.data() as UpcomingModel));
+        if (cloudUpcoming.length > 0) {
+          DataStorageService.saveUpcomingModels(cloudUpcoming);
+        }
+      }
+
+      // 4. Fetch live store settings from cloud
+      const setDocSnap = await getDoc(doc(db, 'settings', 'store'));
+      if (setDocSnap.exists()) {
+        DataStorageService.saveStoreSettings(setDocSnap.data() as StoreSettings);
+      }
+
+      // 5. Fetch live customer reviews from cloud
+      const revDocs = await getDocs(collection(db, 'customerReviews'));
+      if (!revDocs.empty) {
+        const cloudReviews: CustomerReview[] = [];
+        revDocs.forEach((d) => cloudReviews.push(d.data() as CustomerReview));
+        if (cloudReviews.length > 0) {
+          DataStorageService.saveCustomerReviews(cloudReviews);
+        }
+      }
+
+      return true;
+    } catch (e) {
+      console.warn('Firestore: pullLiveStorefrontData non-blocking note:', e);
+      return false;
     }
   }
 

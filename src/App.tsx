@@ -148,8 +148,40 @@ export const App: React.FC = () => {
       refreshData();
     });
 
-    // 3. Real-time Firebase Cloud Database synchronization
-    FirestoreService.initConnection().catch(() => {});
+    // 3. Real-time Firebase Cloud Database synchronization (Always Online / Live Data)
+    FirestoreService.initConnection().then(() => {
+      // Pull fresh data immediately on load to prevent stale offline caching
+      FirestoreService.pullLiveStorefrontData().then(() => {
+        refreshData();
+      });
+    }).catch(() => {});
+
+    const unsubProd = FirestoreService.subscribeProducts((cloudProducts) => {
+      if (cloudProducts && cloudProducts.length > 0) {
+        DataStorageService.saveProducts(cloudProducts);
+        setProducts(cloudProducts);
+      }
+    });
+
+    const unsubRate = FirestoreService.subscribeRateList((cloudRates) => {
+      if (cloudRates && cloudRates.length > 0) {
+        DataStorageService.saveRateList(cloudRates);
+        setRateList(cloudRates);
+      }
+    });
+
+    const unsubUp = FirestoreService.subscribeUpcomingModels((cloudModels) => {
+      if (cloudModels && cloudModels.length > 0) {
+        DataStorageService.saveUpcomingModels(cloudModels);
+      }
+    });
+
+    const unsubSet = FirestoreService.subscribeStoreSettings((cloudSettings) => {
+      if (cloudSettings) {
+        DataStorageService.saveStoreSettings(cloudSettings);
+        setStoreSettings(cloudSettings);
+      }
+    });
 
     const unsubVal = FirestoreService.subscribeValuations((cloudValuations) => {
       if (cloudValuations && cloudValuations.length > 0) {
@@ -170,6 +202,15 @@ export const App: React.FC = () => {
         DataStorageService.savePreBookings(cloudPreBookings);
       }
     });
+
+    // Re-pull live data whenever user switches back to browser tab or comes back online
+    const handleRevalidateFocus = () => {
+      FirestoreService.pullLiveStorefrontData().then(() => {
+        refreshData();
+      });
+    };
+    window.addEventListener('focus', handleRevalidateFocus);
+    window.addEventListener('online', handleRevalidateFocus);
 
     // 4. Initialize 9:00 PM Daily Stock Report auto-scheduler (pmesbutwal@gmail.com -> rudra.pandey97050@gmail.com)
     const cleanupGmailScheduler = GmailStockReportService.initAutoScheduler();
@@ -216,9 +257,15 @@ export const App: React.FC = () => {
       cleanupVersionService();
       cleanupGmailScheduler();
       unsubscribeDataSync();
+      if (unsubProd) unsubProd();
+      if (unsubRate) unsubRate();
+      if (unsubUp) unsubUp();
+      if (unsubSet) unsubSet();
       if (unsubVal) unsubVal();
       if (unsubRep) unsubRep();
       if (unsubPb) unsubPb();
+      window.removeEventListener('focus', handleRevalidateFocus);
+      window.removeEventListener('online', handleRevalidateFocus);
       window.removeEventListener('popstate', handleLocationChange);
       window.removeEventListener('hashchange', handleLocationChange);
     };

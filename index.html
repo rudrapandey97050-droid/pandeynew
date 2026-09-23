@@ -8,6 +8,22 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
+    <script>
+      (function() {
+        if (typeof window !== 'undefined') {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(regs) {
+              for (var i = 0; i < regs.length; i++) { regs.unregister(); }
+            }).catch(function() {});
+          }
+          if ('caches' in window) {
+            caches.keys().then(function(keys) {
+              for (var i = 0; i < keys.length; i++) { caches.delete(keys[i]); }
+            }).catch(function() {});
+          }
+        }
+      })();
+    </script>
     <title>Pandey Mobile Store - Butwal, Nepal</title>
     <meta name="description" content="Pandey Mobile Store is a dedicated smartphone store located at Traffic Chowk, Butwal, Nepal. We specialize in providing a curated selection of both iPhone and Android smartphones with warranty." />
     <meta property="og:type" content="website" />

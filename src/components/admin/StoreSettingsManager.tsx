@@ -644,20 +644,20 @@ export const StoreSettingsManager: React.FC<StoreSettingsManagerProps> = ({
               <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
                 <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Persistence</span>
                 <p className="text-xs font-mono font-bold text-white truncate mt-1">
-                  IndexedDB / Browser Safe
+                  Live Cloud Memory / Direct
                 </p>
               </div>
               <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
                 <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Database Mode</span>
-                <p className="text-xs font-semibold text-white truncate mt-1">
-                  Offline-First ERP
+                <p className="text-xs font-semibold text-emerald-400 truncate mt-1">
+                  Live Real-Time Online
                 </p>
               </div>
               <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
                 <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Status</span>
                 <p className="text-xs font-bold text-emerald-400 flex items-center gap-1.5 mt-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                  Active & Ready
+                  Online & Connected
                 </p>
               </div>
             </div>
@@ -671,12 +671,12 @@ export const StoreSettingsManager: React.FC<StoreSettingsManagerProps> = ({
                 Automatic Real-time Sync
               </h4>
               <p className="text-xs text-slate-600 leading-relaxed">
-                When customer valuations, repair bookings, or pre-orders are submitted on your store, they are instantly written to both local storage and Google Firebase Firestore.
+                When products, rates, valuations, repair bookings, or reviews are submitted on your store, they are instantly synchronized directly with Google Firebase Firestore in real-time.
               </p>
               <ul className="text-xs text-slate-600 space-y-1.5 list-disc list-inside">
-                <li><strong className="text-slate-800">No data loss:</strong> Records survive browser cache resets.</li>
-                <li><strong className="text-slate-800">Multi-device sync:</strong> Admin updates on any device are reflected instantly.</li>
-                <li><strong className="text-slate-800">Offline fallback:</strong> If internet drops, local storage queues changes.</li>
+                <li><strong className="text-slate-800">Fresh on refresh:</strong> No stale offline cache; browsers load live cloud data immediately.</li>
+                <li><strong className="text-slate-800">Multi-device sync:</strong> Changes on admin devices update client screens in real-time.</li>
+                <li><strong className="text-slate-800">Direct connection:</strong> Memory-based caching ensures the latest inventory is always served.</li>
               </ul>
             </div>
 
