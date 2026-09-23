@@ -413,15 +413,17 @@ export class DataStorageService {
     } catch (e) {
       console.error('Error reading store settings', e);
     }
-    this.saveStoreSettings(initialStoreSettings);
+    this.saveStoreSettings(initialStoreSettings, false);
     return initialStoreSettings;
   }
 
-  static saveStoreSettings(settings: StoreSettings): void {
+  static saveStoreSettings(settings: StoreSettings, syncToCloud = false): void {
     try {
       localStorage.setItem(STORAGE_KEYS.STORE_SETTINGS, JSON.stringify(settings));
       notifyDataChange('storesettings');
-      FirestoreService.saveStoreSettings(settings).catch(() => {});
+      if (syncToCloud) {
+        FirestoreService.saveStoreSettings(settings).catch(() => {});
+      }
     } catch (e) {
       console.error('Error saving store settings', e);
     }

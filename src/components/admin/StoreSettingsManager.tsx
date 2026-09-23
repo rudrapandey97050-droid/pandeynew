@@ -120,7 +120,7 @@ export const StoreSettingsManager: React.FC<StoreSettingsManagerProps> = ({
 
   const handleGeneralSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    DataStorageService.saveStoreSettings(formData);
+    DataStorageService.saveStoreSettings(formData, true);
     onSettingsChange();
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);

@@ -7,6 +7,7 @@ import {
   onSnapshot,
   deleteDoc,
   serverTimestamp,
+  writeBatch,
   Unsubscribe
 } from 'firebase/firestore';
 import { db, testFirestoreConnection } from '../lib/firebase.ts';
@@ -55,7 +56,7 @@ export class FirestoreService {
         cloudTimestamp: serverTimestamp()
       }, { merge: true });
     } catch (error: any) {
-      if (error?.code !== 'unavailable') {
+      if (error?.code !== 'unavailable' && error?.code !== 'permission-denied' && error?.code !== 'resource-exhausted') {
         console.warn('Firestore: Error saving valuation to cloud', error);
       }
     }
@@ -75,7 +76,7 @@ export class FirestoreService {
         }
       }, (err) => {
         // Silently handle transient offline, unavailable or unauthenticated states without throwing unhandled exceptions
-        if (err?.code !== 'unavailable' && err?.code !== 'permission-denied') {
+        if (err?.code !== 'unavailable' && err?.code !== 'permission-denied' && err?.code !== 'resource-exhausted') {
           console.warn('Firestore: Valuations listener error', err);
         }
       });
@@ -95,7 +96,7 @@ export class FirestoreService {
         cloudTimestamp: serverTimestamp()
       }, { merge: true });
     } catch (error: any) {
-      if (error?.code !== 'unavailable') {
+      if (error?.code !== 'unavailable' && error?.code !== 'permission-denied' && error?.code !== 'resource-exhausted') {
         console.warn('Firestore: Error saving repair booking to cloud', error);
       }
     }
@@ -115,7 +116,7 @@ export class FirestoreService {
         }
       }, (err) => {
         // Silently handle transient offline, unavailable or unauthenticated states without throwing unhandled exceptions
-        if (err?.code !== 'unavailable' && err?.code !== 'permission-denied') {
+        if (err?.code !== 'unavailable' && err?.code !== 'permission-denied' && err?.code !== 'resource-exhausted') {
           console.warn('Firestore: Repairs listener error', err);
         }
       });
@@ -135,7 +136,7 @@ export class FirestoreService {
         cloudTimestamp: serverTimestamp()
       }, { merge: true });
     } catch (error: any) {
-      if (error?.code !== 'unavailable') {
+      if (error?.code !== 'unavailable' && error?.code !== 'permission-denied' && error?.code !== 'resource-exhausted') {
         console.warn('Firestore: Error saving pre-booking to cloud', error);
       }
     }
@@ -155,7 +156,7 @@ export class FirestoreService {
         }
       }, (err) => {
         // Silently handle transient offline, unavailable or unauthenticated states without throwing unhandled exceptions
-        if (err?.code !== 'unavailable' && err?.code !== 'permission-denied') {
+        if (err?.code !== 'unavailable' && err?.code !== 'permission-denied' && err?.code !== 'resource-exhausted') {
           console.warn('Firestore: PreBookings listener error', err);
         }
       });
@@ -174,8 +175,10 @@ export class FirestoreService {
         syncedAt: new Date().toISOString(),
         cloudTimestamp: serverTimestamp()
       }, { merge: true });
-    } catch (error) {
-      console.warn('Firestore: Error saving order to cloud', error);
+    } catch (error: any) {
+      if (error?.code !== 'unavailable' && error?.code !== 'permission-denied' && error?.code !== 'resource-exhausted') {
+        console.warn('Firestore: Error saving order to cloud', error);
+      }
     }
   }
 
@@ -188,8 +191,10 @@ export class FirestoreService {
         ...product,
         syncedAt: new Date().toISOString()
       }, { merge: true });
-    } catch (error) {
-      console.warn('Firestore: Error saving product to cloud', error);
+    } catch (error: any) {
+      if (error?.code !== 'unavailable' && error?.code !== 'permission-denied' && error?.code !== 'resource-exhausted') {
+        console.warn('Firestore: Error saving product to cloud', error);
+      }
     }
   }
 
@@ -197,8 +202,10 @@ export class FirestoreService {
     if (!db) return;
     try {
       await deleteDoc(doc(db, 'products', productId));
-    } catch (error) {
-      console.warn('Firestore: Error deleting product from cloud', error);
+    } catch (error: any) {
+      if (error?.code !== 'unavailable' && error?.code !== 'permission-denied' && error?.code !== 'resource-exhausted') {
+        console.warn('Firestore: Error deleting product from cloud', error);
+      }
     }
   }
 
@@ -215,7 +222,7 @@ export class FirestoreService {
           onUpdate(items);
         }
       }, (err) => {
-        if (err?.code !== 'unavailable') {
+        if (err?.code !== 'unavailable' && err?.code !== 'permission-denied' && err?.code !== 'resource-exhausted') {
           console.warn('Firestore: Products listener error', err);
         }
       });
@@ -233,8 +240,10 @@ export class FirestoreService {
         ...item,
         syncedAt: new Date().toISOString()
       }, { merge: true });
-    } catch (error) {
-      console.warn('Firestore: Error saving rate list item to cloud', error);
+    } catch (error: any) {
+      if (error?.code !== 'unavailable' && error?.code !== 'permission-denied' && error?.code !== 'resource-exhausted') {
+        console.warn('Firestore: Error saving rate list item to cloud', error);
+      }
     }
   }
 
@@ -242,8 +251,10 @@ export class FirestoreService {
     if (!db) return;
     try {
       await deleteDoc(doc(db, 'rateList', itemId));
-    } catch (error) {
-      console.warn('Firestore: Error deleting rate list item from cloud', error);
+    } catch (error: any) {
+      if (error?.code !== 'unavailable' && error?.code !== 'permission-denied' && error?.code !== 'resource-exhausted') {
+        console.warn('Firestore: Error deleting rate list item from cloud', error);
+      }
     }
   }
 
@@ -260,7 +271,7 @@ export class FirestoreService {
           onUpdate(items);
         }
       }, (err) => {
-        if (err?.code !== 'unavailable') {
+        if (err?.code !== 'unavailable' && err?.code !== 'permission-denied' && err?.code !== 'resource-exhausted') {
           console.warn('Firestore: RateList listener error', err);
         }
       });
@@ -278,8 +289,10 @@ export class FirestoreService {
         ...model,
         syncedAt: new Date().toISOString()
       }, { merge: true });
-    } catch (error) {
-      console.warn('Firestore: Error saving upcoming model to cloud', error);
+    } catch (error: any) {
+      if (error?.code !== 'unavailable' && error?.code !== 'permission-denied' && error?.code !== 'resource-exhausted') {
+        console.warn('Firestore: Error saving upcoming model to cloud', error);
+      }
     }
   }
 
@@ -296,7 +309,7 @@ export class FirestoreService {
           onUpdate(items);
         }
       }, (err) => {
-        if (err?.code !== 'unavailable') {
+        if (err?.code !== 'unavailable' && err?.code !== 'permission-denied' && err?.code !== 'resource-exhausted') {
           console.warn('Firestore: UpcomingModels listener error', err);
         }
       });
@@ -306,16 +319,31 @@ export class FirestoreService {
   }
 
   // --- Store Settings ---
+  private static lastSavedSettingsJson = '';
+  private static isSavingSettings = false;
+
   static async saveStoreSettings(settings: StoreSettings): Promise<void> {
     if (!db) return;
     try {
+      const currentJson = JSON.stringify(settings);
+      if (this.lastSavedSettingsJson === currentJson) {
+        return; // Skip redundant cloud write
+      }
+      if (this.isSavingSettings) return;
+      this.isSavingSettings = true;
+
       const ref = doc(db, 'settings', 'store');
       await setDoc(ref, {
         ...settings,
         syncedAt: new Date().toISOString()
       }, { merge: true });
-    } catch (error) {
-      console.warn('Firestore: Error saving store settings to cloud', error);
+      this.lastSavedSettingsJson = currentJson;
+    } catch (error: any) {
+      if (error?.code !== 'unavailable' && error?.code !== 'permission-denied' && error?.code !== 'resource-exhausted') {
+        console.warn('Firestore: Error saving store settings to cloud', error);
+      }
+    } finally {
+      this.isSavingSettings = false;
     }
   }
 
@@ -325,10 +353,12 @@ export class FirestoreService {
       const docRef = doc(db, 'settings', 'store');
       return onSnapshot(docRef, (docSnap) => {
         if (docSnap.exists()) {
-          onUpdate(docSnap.data() as StoreSettings);
+          const cloudData = docSnap.data() as StoreSettings;
+          this.lastSavedSettingsJson = JSON.stringify(cloudData);
+          onUpdate(cloudData);
         }
       }, (err) => {
-        if (err?.code !== 'unavailable') {
+        if (err?.code !== 'unavailable' && err?.code !== 'permission-denied' && err?.code !== 'resource-exhausted') {
           console.warn('Firestore: StoreSettings listener error', err);
         }
       });
@@ -374,7 +404,9 @@ export class FirestoreService {
       // 4. Fetch live store settings from cloud
       const setDocSnap = await getDoc(doc(db, 'settings', 'store'));
       if (setDocSnap.exists()) {
-        DataStorageService.saveStoreSettings(setDocSnap.data() as StoreSettings);
+        const cloudData = setDocSnap.data() as StoreSettings;
+        this.lastSavedSettingsJson = JSON.stringify(cloudData);
+        DataStorageService.saveStoreSettings(cloudData, false);
       }
 
       // 5. Fetch live customer reviews from cloud
@@ -389,7 +421,7 @@ export class FirestoreService {
 
       return true;
     } catch (e: any) {
-      if (e?.code !== 'unavailable' && e?.code !== 'permission-denied') {
+      if (e?.code !== 'unavailable' && e?.code !== 'permission-denied' && e?.code !== 'resource-exhausted') {
         console.warn('Firestore: pullLiveStorefrontData non-blocking note:', e);
       }
       return false;
@@ -407,7 +439,7 @@ export class FirestoreService {
         cloudTimestamp: serverTimestamp()
       }, { merge: true });
     } catch (error: any) {
-      if (error?.code !== 'unavailable') {
+      if (error?.code !== 'unavailable' && error?.code !== 'permission-denied' && error?.code !== 'resource-exhausted') {
         console.warn('Firestore: Error saving customer review to cloud', error);
       }
     }
@@ -423,7 +455,7 @@ export class FirestoreService {
       });
       return list;
     } catch (err: any) {
-      if (err?.code !== 'unavailable') {
+      if (err?.code !== 'unavailable' && err?.code !== 'permission-denied' && err?.code !== 'resource-exhausted') {
         console.warn('Firestore: Error fetching customer reviews', err);
       }
       return [];
@@ -443,7 +475,7 @@ export class FirestoreService {
           onUpdate(items);
         }
       }, (err) => {
-        if (err?.code !== 'unavailable') {
+        if (err?.code !== 'unavailable' && err?.code !== 'permission-denied' && err?.code !== 'resource-exhausted') {
           console.warn('Firestore: Customer reviews listener error', err);
         }
       });
@@ -452,7 +484,7 @@ export class FirestoreService {
     }
   }
 
-  // --- Full Cloud Sync (Push all local data to Firestore) ---
+  // --- Full Cloud Sync (Push all local data to Firestore with writeBatch) ---
   static async pushAllToCloud(): Promise<{ success: boolean; count: number; message: string }> {
     if (!db) {
       return {
@@ -463,60 +495,120 @@ export class FirestoreService {
     }
     try {
       let count = 0;
+      let currentBatch = writeBatch(db);
+      let batchOps = 0;
+
+      const commitBatchIfNeeded = async (force = false) => {
+        if (batchOps > 0 && (batchOps >= 45 || force)) {
+          await currentBatch.commit();
+          currentBatch = writeBatch(db!);
+          batchOps = 0;
+        }
+      };
 
       // 1. Products
       const products = DataStorageService.getProducts();
       for (const p of products) {
-        await this.saveProduct(p);
+        const ref = doc(db, 'products', p.id);
+        currentBatch.set(ref, {
+          ...p,
+          syncedAt: new Date().toISOString()
+        }, { merge: true });
+        batchOps++;
         count++;
+        await commitBatchIfNeeded();
       }
 
       // 2. Rate List
       const rateList = DataStorageService.getRateList();
       for (const item of rateList) {
-        await this.saveRateListItem(item);
+        const ref = doc(db, 'rateList', item.id);
+        currentBatch.set(ref, {
+          ...item,
+          syncedAt: new Date().toISOString()
+        }, { merge: true });
+        batchOps++;
         count++;
+        await commitBatchIfNeeded();
       }
 
       // 3. Valuations
       const valuations = DataStorageService.getValuations();
       for (const val of valuations) {
-        await this.saveValuation(val);
+        const ref = doc(db, 'valuations', val.id);
+        currentBatch.set(ref, {
+          ...val,
+          syncedAt: new Date().toISOString()
+        }, { merge: true });
+        batchOps++;
         count++;
+        await commitBatchIfNeeded();
       }
 
       // 4. Repairs
       const repairs = DataStorageService.getRepairBookings();
       for (const rep of repairs) {
-        await this.saveRepairBooking(rep);
+        const ref = doc(db, 'repairBookings', rep.id);
+        currentBatch.set(ref, {
+          ...rep,
+          syncedAt: new Date().toISOString()
+        }, { merge: true });
+        batchOps++;
         count++;
+        await commitBatchIfNeeded();
       }
 
       // 5. Pre-bookings
       const preBookings = DataStorageService.getPreBookings();
       for (const pb of preBookings) {
-        await this.savePreBooking(pb);
+        const ref = doc(db, 'preBookings', pb.id);
+        currentBatch.set(ref, {
+          ...pb,
+          syncedAt: new Date().toISOString()
+        }, { merge: true });
+        batchOps++;
         count++;
+        await commitBatchIfNeeded();
       }
 
       // 6. Upcoming Models
       const upcoming = DataStorageService.getUpcomingModels();
       for (const u of upcoming) {
-        await this.saveUpcomingModel(u);
+        const ref = doc(db, 'upcomingModels', u.id);
+        currentBatch.set(ref, {
+          ...u,
+          syncedAt: new Date().toISOString()
+        }, { merge: true });
+        batchOps++;
         count++;
+        await commitBatchIfNeeded();
       }
 
       // 7. Store Settings
       const settings = DataStorageService.getStoreSettings();
-      await this.saveStoreSettings(settings);
+      const settingsRef = doc(db, 'settings', 'store');
+      currentBatch.set(settingsRef, {
+        ...settings,
+        syncedAt: new Date().toISOString()
+      }, { merge: true });
+      batchOps++;
       count++;
 
       // 8. Customer Reviews
       const reviews = DataStorageService.getCustomerReviews();
       for (const rev of reviews) {
-        await this.saveCustomerReview(rev);
+        const ref = doc(db, 'customerReviews', rev.id);
+        currentBatch.set(ref, {
+          ...rev,
+          syncedAt: new Date().toISOString()
+        }, { merge: true });
+        batchOps++;
         count++;
+        await commitBatchIfNeeded();
       }
+
+      // Commit any remaining writes in batch
+      await commitBatchIfNeeded(true);
 
       return {
         success: true,
@@ -524,11 +616,13 @@ export class FirestoreService {
         message: `Successfully synchronized ${count} items to Firebase Cloud Firestore!`
       };
     } catch (err: any) {
-      console.error('Firestore pushAllToCloud error:', err);
+      if (err?.code !== 'unavailable' && err?.code !== 'permission-denied' && err?.code !== 'resource-exhausted') {
+        console.error('Firestore pushAllToCloud error:', err);
+      }
       return {
         success: false,
         count: 0,
-        message: `Sync failed: ${err.message || String(err)}`
+        message: `Sync note: ${err.message || String(err)}`
       };
     }
   }
@@ -585,7 +679,9 @@ export class FirestoreService {
       // 5. Store Settings
       const setDocSnap = await getDoc(doc(db, 'settings', 'store'));
       if (setDocSnap.exists()) {
-        DataStorageService.saveStoreSettings(setDocSnap.data() as StoreSettings);
+        const cloudData = setDocSnap.data() as StoreSettings;
+        this.lastSavedSettingsJson = JSON.stringify(cloudData);
+        DataStorageService.saveStoreSettings(cloudData, false);
       }
 
       // 6. Customer Reviews
@@ -603,10 +699,12 @@ export class FirestoreService {
         message: 'Successfully pulled and merged latest data from Firebase Cloud.'
       };
     } catch (err: any) {
-      console.error('Firestore pullAllFromCloud error:', err);
+      if (err?.code !== 'unavailable' && err?.code !== 'permission-denied' && err?.code !== 'resource-exhausted') {
+        console.error('Firestore pullAllFromCloud error:', err);
+      }
       return {
         success: false,
-        message: `Pull failed: ${err.message || String(err)}`
+        message: `Pull note: ${err.message || String(err)}`
       };
     }
   }

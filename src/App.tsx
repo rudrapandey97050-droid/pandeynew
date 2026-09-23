@@ -178,7 +178,7 @@ export const App: React.FC = () => {
 
     const unsubSet = FirestoreService.subscribeStoreSettings((cloudSettings) => {
       if (cloudSettings) {
-        DataStorageService.saveStoreSettings(cloudSettings);
+        DataStorageService.saveStoreSettings(cloudSettings, false);
         setStoreSettings(cloudSettings);
       }
     });
