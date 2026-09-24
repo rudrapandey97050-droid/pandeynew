@@ -17,12 +17,14 @@ export const AppleShowcaseBanner: React.FC<AppleShowcaseBannerProps> = ({
   const isBannerEnabled = storeSettings ? storeSettings.showLineupBanner !== false : true;
 
   const visibleProducts = useMemo(() => {
-    return products.filter(p => !p.isHidden);
+    return (products || []).filter(p => p && !p.isHidden);
   }, [products]);
 
   const appleProducts = useMemo(() => {
     return visibleProducts.filter(
-      p => p.brand.toLowerCase() === 'apple' || p.category.toLowerCase() === 'iphone'
+      p =>
+        (p.brand && p.brand.toLowerCase() === 'apple') ||
+        (p.category && p.category.toLowerCase() === 'iphone')
     );
   }, [visibleProducts]);
 

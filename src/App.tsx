@@ -601,7 +601,7 @@ export const App: React.FC = () => {
               Pandey Mobile Store is situated at Traffic Chowk, Main Road, Butwal. Visit us for instant 32-point spot valuations, device exchange, certified smartphones, and express certified repairs.
             </p>
           </div>
-          <GoogleMapsStoreLocator height="auto" showCard={true} />
+          <GoogleMapsStoreLocator height="auto" showCard={true} storeSettings={storeSettings} />
         </div>
       </section>
 

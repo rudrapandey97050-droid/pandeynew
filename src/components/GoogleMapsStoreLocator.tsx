@@ -1,10 +1,16 @@
-import React from 'react';
-import { MapPin, Navigation, Phone, Clock, ExternalLink, ShieldCheck, Sparkles, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { MapPin, Navigation, Phone, Clock, ExternalLink, ShieldCheck, Sparkles, CheckCircle2, QrCode } from 'lucide-react';
+import { StoreSettings, StorePaymentQR } from '../types.ts';
+import { DataStorageService } from '../services/dataStorage.ts';
+import { initialPaymentQRs } from '../data/initialPaymentQRs.ts';
+import { PaymentQRModal } from './PaymentQRModal.tsx';
+import { ErrorBoundary } from './ErrorBoundary.tsx';
 
 interface GoogleMapsStoreLocatorProps {
   className?: string;
   height?: string;
   showCard?: boolean;
+  storeSettings?: StoreSettings;
 }
 
 export const STORE_LOCATION = {
@@ -23,9 +29,21 @@ export const STORE_LOCATION = {
 export const GoogleMapsStoreLocator: React.FC<GoogleMapsStoreLocatorProps> = ({
   className = '',
   showCard = true,
+  storeSettings
 }) => {
+  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
+
+  const paymentQRs: StorePaymentQR[] =
+    storeSettings?.paymentQRs && storeSettings.paymentQRs.length > 0
+      ? storeSettings.paymentQRs
+      : DataStorageService.getPaymentQRs();
+
+  const showContactQRs =
+    (storeSettings?.showPaymentQRsInContact !== false) &&
+    paymentQRs.some(q => q.isActive && q.showInContact !== false);
+
   const handleOpenMap = () => {
-    window.open(STORE_LOCATION.googleMapsUrl, '_blank', 'noopener,noreferrer');
+    window.open(storeSettings?.googleMapsUrl || STORE_LOCATION.googleMapsUrl, '_blank', 'noopener,noreferrer');
   };
 
   const handleGetDirections = () => {
@@ -148,8 +166,52 @@ export const GoogleMapsStoreLocator: React.FC<GoogleMapsStoreLocatorProps> = ({
               <span>अन-द-स्पट सेवा</span>
             </div>
           </div>
+
+          {/* Optional 5th / Dedicated QR Payment card if enabled */}
+          {showContactQRs && (
+            <div className="p-4 bg-gradient-to-br from-indigo-50/70 to-emerald-50/70 rounded-2xl border border-emerald-200/80 shadow-2xs space-y-2 col-span-1 sm:col-span-2 lg:col-span-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start space-x-3">
+                <div className="w-10 h-10 bg-white text-emerald-600 rounded-xl flex items-center justify-center shrink-0 border border-emerald-200 shadow-2xs">
+                  <QrCode className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h5 className="font-bold text-slate-900 text-sm">
+                      {storeSettings?.qrPaymentHeading || 'डिजिटल भुक्तानी (Scan & Pay)'}
+                    </h5>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                      FonePay • eSewa • Khalti • Bank
+                    </span>
+                  </div>
+                  <p className="text-slate-600 text-xs mt-0.5 leading-relaxed">
+                    {storeSettings?.qrPaymentSubheading ||
+                      'दुकानमा वा अनलाइनबाट सामान खरिद तथा मर्मत बिल सिधै QR स्क्यान गरी तत्काल भुक्तानी गर्नुहोस्।'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsQRModalOpen(true)}
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 shrink-0 shadow-xs cursor-pointer"
+              >
+                <QrCode className="w-4 h-4" />
+                <span>QR कोड स्क्यान गर्नुहोस् (Open QR)</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
+
+      {/* Payment QR Modal */}
+      <ErrorBoundary name="PaymentQRModalLocator">
+        <PaymentQRModal
+          isOpen={isQRModalOpen}
+          onClose={() => setIsQRModalOpen(false)}
+          paymentQRs={paymentQRs}
+          storeName={storeSettings?.storeName || STORE_LOCATION.name}
+        />
+      </ErrorBoundary>
     </div>
   );
 };

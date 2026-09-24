@@ -138,8 +138,19 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
   const isApple = product.brand.toLowerCase() === 'apple' || product.category.toLowerCase() === 'iphone';
   const isPreOwned = product.condition === 'Used' || product.condition === 'Pre-Owned' || product.condition === 'Refurbished';
-  const stockCount = typeof product.stock === 'number' ? Math.max(0, product.stock) : 0;
-  const isOutOfStock = stockCount <= 0 || product.availability === 'Out of Stock' || product.availability === 'Sold Out';
+  const isOutOfStock =
+    product.availability === 'Out of Stock' ||
+    product.availability === 'Sold Out' ||
+    (typeof product.stock === 'number' &&
+      product.stock <= 0 &&
+      product.availability !== 'In Stock' &&
+      product.availability !== 'Available' &&
+      product.availability !== 'Limited Stock');
+  const isPreOrder = product.availability === 'Pre-Order';
+  const isLimited = product.availability === 'Limited Stock' || (typeof product.stock === 'number' && product.stock > 0 && product.stock <= 2);
+  const stockCount = typeof product.stock === 'number' && product.stock > 0
+    ? product.stock
+    : (isOutOfStock ? 0 : 5);
 
   // When user clicks a color, switch to that color's specific image if provided
   const handleSelectColor = (col: string) => {
@@ -233,9 +244,21 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
                 <div className="absolute top-3 right-3 z-10">
                   <span className={`px-3 py-1 rounded-full text-[11px] font-bold shadow-md ${
-                    isOutOfStock ? 'bg-rose-600 text-white' : 'bg-emerald-600 text-white'
+                    isOutOfStock
+                      ? 'bg-rose-600 text-white'
+                      : isPreOrder
+                      ? 'bg-purple-600 text-white'
+                      : isLimited
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-emerald-600 text-white'
                   }`}>
-                    {isOutOfStock ? 'Out of Stock (स्टक सकिएको)' : `In Stock • ${stockCount} Units Available`}
+                    {isOutOfStock
+                      ? 'Out of Stock (स्टक सकिएको)'
+                      : isPreOrder
+                      ? 'Pre-Order Available'
+                      : isLimited
+                      ? `Limited Stock • ${stockCount} Units Left`
+                      : `In Stock • ${stockCount} Units Available`}
                   </span>
                 </div>
               </div>

@@ -41,9 +41,19 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     ? 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=800&auto=format&fit=crop&q=80'
     : colorPhoto || product.image || (allPhotos[0] || 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=800&auto=format&fit=crop&q=80');
 
-  const stockCount = typeof product.stock === 'number' ? Math.max(0, product.stock) : 0;
-  const isOutOfStock = stockCount <= 0 || product.availability === 'Out of Stock' || product.availability === 'Sold Out';
+  const isOutOfStock =
+    product.availability === 'Out of Stock' ||
+    product.availability === 'Sold Out' ||
+    (typeof product.stock === 'number' &&
+      product.stock <= 0 &&
+      product.availability !== 'In Stock' &&
+      product.availability !== 'Available' &&
+      product.availability !== 'Limited Stock');
   const isPreOrder = product.availability === 'Pre-Order';
+  const isLimited = product.availability === 'Limited Stock' || (typeof product.stock === 'number' && product.stock > 0 && product.stock <= 2);
+  const stockCount = typeof product.stock === 'number' && product.stock > 0
+    ? product.stock
+    : (isOutOfStock ? 0 : 5);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-xl transition-all duration-300 flex flex-col justify-between group">
@@ -95,6 +105,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           ) : isPreOrder ? (
             <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-purple-600 text-white shadow-xs">
               Pre-Order
+            </span>
+          ) : isLimited ? (
+            <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-600 text-white shadow-xs flex items-center space-x-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              <span>Limited Stock ({stockCount})</span>
             </span>
           ) : (
             <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-600 text-white shadow-xs flex items-center space-x-1">

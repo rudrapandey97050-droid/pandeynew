@@ -13,13 +13,15 @@ import {
   PreBookingStatus,
   FullAppBackupData,
   RestoreResult,
-  CustomerReview
+  CustomerReview,
+  StorePaymentQR
 } from '../types.ts';
 import { initialProducts } from '../data/products.ts';
 import { initialUsedIPhoneRateList } from '../data/nepalPriceList.ts';
 import { initialStoreSettings } from '../data/storeSettings.ts';
 import { initialUpcomingModels, initialPopupSettings } from '../data/upcomingModels.ts';
 import { initialCustomerReviews } from '../data/initialReviews.ts';
+import { initialPaymentQRs } from '../data/initialPaymentQRs.ts';
 import { FirestoreService } from './firestoreService.ts';
 
 const STORAGE_KEYS = {
@@ -35,6 +37,7 @@ const STORAGE_KEYS = {
   POPUP_SETTINGS: 'pms_popup_settings_v1',
   POPUP_DISMISSED: 'pms_popup_dismissed_session_v1',
   CUSTOMER_REVIEWS: 'pms_customer_reviews_v1',
+  PAYMENT_QRS: 'pms_payment_qrs_v1',
   LAST_SYNC: 'pms_last_sync_timestamp'
 };
 
@@ -97,6 +100,50 @@ export class DataStorageService {
     };
   }
 
+  /**
+   * Normalize product stock count and availability status.
+   * CRITICAL: Admin choice is authoritative!
+   * - If admin marks 'In Stock', 'Available', or 'Limited Stock', never force Out of Stock.
+   * - If admin marks 'Out of Stock' or 'Sold Out', stock is 0.
+   */
+  static normalizeProduct(p: Product): Product {
+    const rawAvailability = p.availability;
+    const isExplicitlyOut = rawAvailability === 'Out of Stock' || rawAvailability === 'Sold Out';
+    const isExplicitlyPreOrder = rawAvailability === 'Pre-Order';
+    const isExplicitlyIn = rawAvailability === 'In Stock' || rawAvailability === 'Available' || rawAvailability === 'Limited Stock';
+
+    let availability: ProductAvailability = rawAvailability || 'In Stock';
+    let stock = typeof p.stock === 'number' ? Math.max(0, p.stock) : (isExplicitlyOut ? 0 : 5);
+
+    if (isExplicitlyOut) {
+      stock = 0;
+      availability = 'Out of Stock';
+    } else if (isExplicitlyPreOrder) {
+      availability = 'Pre-Order';
+      // keep stock count as is or 0
+    } else if (isExplicitlyIn) {
+      // Admin intentionally marked item available: ensure healthy stock count
+      stock = stock > 0 ? stock : 5;
+      availability = rawAvailability === 'Limited Stock'
+        ? 'Limited Stock'
+        : (rawAvailability === 'Available' ? 'Available' : (stock <= 2 ? 'Limited Stock' : 'In Stock'));
+    } else {
+      // Default fallback
+      if (stock > 0) {
+        availability = stock <= 2 ? 'Limited Stock' : 'In Stock';
+      } else {
+        stock = 5;
+        availability = 'In Stock';
+      }
+    }
+
+    return {
+      ...p,
+      stock,
+      availability
+    };
+  }
+
   // Products (Initialized with official iPhone lineup & fully editable/controllable by Admin)
   static getProducts(): Product[] {
     try {
@@ -104,53 +151,21 @@ export class DataStorageService {
       if (data !== null) {
         const parsed = JSON.parse(data);
         if (Array.isArray(parsed)) {
-          // Synchronize stock count with visitor availability:
-          // Stock in account > 0 => In Stock / Limited Stock; Stock <= 0 => Out of Stock
-          return parsed.map(p => {
-            const stock = typeof p.stock === 'number' ? Math.max(0, p.stock) : 0;
-            const availability: ProductAvailability = p.availability === 'Pre-Order'
-              ? 'Pre-Order'
-              : (stock > 0 ? (stock <= 2 ? 'Limited Stock' : 'In Stock') : 'Out of Stock');
-            return {
-              ...p,
-              stock,
-              availability
-            };
-          });
+          return parsed.map(p => this.normalizeProduct(p));
         }
       }
     } catch (e) {
       console.error('Error reading products from storage', e);
     }
     // Only initialize with official Apple lineup if key has NEVER been set
-    const initialWithStock: Product[] = initialProducts.map(p => {
-      const stock = typeof p.stock === 'number' ? Math.max(0, p.stock) : 0;
-      const availability: ProductAvailability = p.availability === 'Pre-Order'
-        ? 'Pre-Order'
-        : (stock > 0 ? (stock <= 2 ? 'Limited Stock' : 'In Stock') : 'Out of Stock');
-      return {
-        ...p,
-        stock,
-        availability
-      };
-    });
+    const initialWithStock: Product[] = initialProducts.map(p => this.normalizeProduct(p));
     this.saveProducts(initialWithStock);
     return initialWithStock;
   }
 
   static saveProducts(products: Product[]): void {
     try {
-      const synced: Product[] = products.map(p => {
-        const stock = typeof p.stock === 'number' ? Math.max(0, p.stock) : 0;
-        const availability: ProductAvailability = p.availability === 'Pre-Order'
-          ? 'Pre-Order'
-          : (stock > 0 ? (stock <= 2 ? 'Limited Stock' : 'In Stock') : 'Out of Stock');
-        return {
-          ...p,
-          stock,
-          availability
-        };
-      });
+      const synced: Product[] = products.map(p => this.normalizeProduct(p));
       localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(synced));
       notifyDataChange('products');
     } catch (e) {
@@ -160,7 +175,7 @@ export class DataStorageService {
 
   static updateProductStock(id: string, newStock: number): Product | null {
     const stock = Math.max(0, newStock);
-    const availability = stock > 0 ? (stock <= 2 ? 'Limited Stock' : 'In Stock') : 'Out of Stock';
+    const availability: ProductAvailability = stock > 0 ? (stock <= 2 ? 'Limited Stock' : 'In Stock') : 'Out of Stock';
     return this.updateProduct(id, { stock, availability });
   }
 
@@ -401,6 +416,13 @@ export class DataStorageService {
           parsed.whatsapp = '9847460603';
           modified = true;
         }
+        // Ensure paymentQRs is initialized with verified defaults if absent or empty
+        if (!parsed.paymentQRs || !Array.isArray(parsed.paymentQRs) || parsed.paymentQRs.length === 0) {
+          parsed.paymentQRs = initialPaymentQRs;
+          if (parsed.showPaymentQRsInFooter === undefined) parsed.showPaymentQRsInFooter = true;
+          if (parsed.showPaymentQRsInContact === undefined) parsed.showPaymentQRsInContact = true;
+          modified = true;
+        }
         if (modified) {
           try {
             localStorage.setItem(STORAGE_KEYS.STORE_SETTINGS, JSON.stringify(parsed));
@@ -427,6 +449,69 @@ export class DataStorageService {
     } catch (e) {
       console.error('Error saving store settings', e);
     }
+  }
+
+  // ==========================================
+  // STORE PAYMENT QR CODES (eSewa, FonePay, Khalti, Bank)
+  // ==========================================
+  static getPaymentQRs(): StorePaymentQR[] {
+    const settings = this.getStoreSettings();
+    if (settings.paymentQRs && Array.isArray(settings.paymentQRs) && settings.paymentQRs.length > 0) {
+      return settings.paymentQRs;
+    }
+    return initialPaymentQRs;
+  }
+
+  static savePaymentQRs(qrs: StorePaymentQR[], syncToCloud = true): void {
+    const settings = this.getStoreSettings();
+    settings.paymentQRs = qrs;
+    this.saveStoreSettings(settings, syncToCloud);
+    notifyDataChange('payment_qrs');
+  }
+
+  static addPaymentQR(qr: Omit<StorePaymentQR, 'id' | 'createdAt' | 'updatedAt'>): StorePaymentQR {
+    const currentQRs = this.getPaymentQRs();
+    const newQR: StorePaymentQR = {
+      ...qr,
+      id: `qr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    // If marked as primary, un-primary others
+    const updated = newQR.isPrimary
+      ? currentQRs.map(q => ({ ...q, isPrimary: false }))
+      : [...currentQRs];
+    updated.push(newQR);
+    this.savePaymentQRs(updated, true);
+    return newQR;
+  }
+
+  static updatePaymentQR(id: string, updates: Partial<StorePaymentQR>): StorePaymentQR | null {
+    const currentQRs = this.getPaymentQRs();
+    const index = currentQRs.findIndex(q => q.id === id);
+    if (index === -1) return null;
+
+    let updatedList = [...currentQRs];
+    if (updates.isPrimary) {
+      updatedList = updatedList.map(q => ({ ...q, isPrimary: false }));
+    }
+
+    const updatedItem: StorePaymentQR = {
+      ...updatedList[index],
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+    updatedList[index] = updatedItem;
+    this.savePaymentQRs(updatedList, true);
+    return updatedItem;
+  }
+
+  static deletePaymentQR(id: string): boolean {
+    const currentQRs = this.getPaymentQRs();
+    const filtered = currentQRs.filter(q => q.id !== id);
+    if (filtered.length === currentQRs.length) return false;
+    this.savePaymentQRs(filtered, true);
+    return true;
   }
 
   // Mobile Valuations & Exchange

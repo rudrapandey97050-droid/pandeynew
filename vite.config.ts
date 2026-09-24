@@ -526,6 +526,12 @@ function setupAuthMiddleware(middlewares: any) {
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss(), adminAuthPlugin()],
+  resolve: {
+    dedupe: ['react', 'react-dom']
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react/jsx-runtime', 'lucide-react', 'qrcode']
+  },
   server: {
     port: 3000,
     host: '0.0.0.0'

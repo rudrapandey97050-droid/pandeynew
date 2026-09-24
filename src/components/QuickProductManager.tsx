@@ -101,6 +101,7 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
   const [warranty, setWarranty] = useState('1 Year Official Brand Warranty');
   const [customWarranty, setCustomWarranty] = useState('');
   const [availability, setAvailability] = useState<ProductAvailability>('In Stock');
+  const [stockQuantity, setStockQuantity] = useState<number>(5);
   const [description, setDescription] = useState('');
   const [isFeatured, setIsFeatured] = useState(false);
   const [isBestSeller, setIsBestSeller] = useState(false);
@@ -163,6 +164,7 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
     setWarranty('1 Year Official Brand Warranty');
     setCustomWarranty('');
     setAvailability('In Stock');
+    setStockQuantity(5);
     setDescription('');
     setIsFeatured(false);
     setIsBestSeller(false);
@@ -226,7 +228,9 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
       setCustomWarranty(p.warranty || '');
     }
 
+    const isOut = p.availability === 'Out of Stock' || p.availability === 'Sold Out';
     setAvailability(p.availability || 'In Stock');
+    setStockQuantity(typeof p.stock === 'number' ? p.stock : (isOut ? 0 : 5));
     setDescription(p.description || '');
     setIsFeatured(Boolean(p.isFeatured));
     setIsBestSeller(Boolean(p.isBestSeller));
@@ -533,6 +537,25 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
     onProductsChange();
   };
 
+  // Quick 1-Click Toggle Stock (Available / Out of Stock)
+  const handleToggleStockStatus = (prod: Product) => {
+    const isCurrentlyOut = prod.availability === 'Out of Stock' || prod.availability === 'Sold Out';
+    if (isCurrentlyOut) {
+      // Switch to Available In Stock
+      DataStorageService.updateProduct(prod.id, {
+        availability: 'In Stock',
+        stock: prod.stock && prod.stock > 0 ? prod.stock : 5
+      });
+    } else {
+      // Switch to Out of Stock
+      DataStorageService.updateProduct(prod.id, {
+        availability: 'Out of Stock',
+        stock: 0
+      });
+    }
+    onProductsChange();
+  };
+
   // Save product (Add or Edit) - 100% Free, Offline Safe, No Cloud Billing Required
   const handleSaveProduct = (e: React.FormEvent) => {
     e.preventDefault();
@@ -601,7 +624,12 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
       color: finalColor,
       colorImages: Object.keys(colorImages).length > 0 ? colorImages : undefined,
       warranty: finalWarranty,
-      availability,
+      availability: ((availability === 'Out of Stock' || availability === 'Sold Out')
+        ? 'Out of Stock'
+        : (availability === 'Pre-Order'
+          ? 'Pre-Order'
+          : (availability === 'Limited Stock' ? 'Limited Stock' : (Number(stockQuantity) <= 2 ? 'Limited Stock' : 'In Stock')))) as ProductAvailability,
+      stock: (availability === 'Out of Stock' || availability === 'Sold Out') ? 0 : Math.max(1, Number(stockQuantity) || 5),
       description: finalDescription,
       isFeatured,
       isBestSeller,
@@ -865,7 +893,7 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
                     <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
                       prod.availability === 'Out of Stock' ? 'bg-rose-600 text-white' : 'bg-slate-900/80 text-white'
                     }`}>
-                      {prod.availability || 'In Stock'}
+                      {prod.availability === 'Out of Stock' ? 'Out of Stock' : (prod.availability || 'In Stock')}
                     </span>
 
                     {photosCount > 1 && (
@@ -893,7 +921,7 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
                       </div>
                     )}
 
-                    {/* Price display */}
+                    {/* Price & Stock display with 1-click status toggle */}
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
                       <div className="flex items-baseline space-x-2">
                         <span className="text-base font-black text-indigo-700">{formatNPR(prod.price)}</span>
@@ -901,9 +929,19 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
                           <span className="text-xs text-slate-400 line-through">{formatNPR(prod.originalPrice)}</span>
                         )}
                       </div>
-                      <span className="text-[11px] font-semibold text-slate-500">
-                        {prod.stock && prod.stock > 0 ? `${prod.stock} in stock` : 'Out of stock'}
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleStockStatus(prod)}
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md cursor-pointer transition flex items-center space-x-1 ${
+                          prod.availability === 'Out of Stock'
+                            ? 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                        }`}
+                        title={prod.availability === 'Out of Stock' ? 'Click to make Available / In Stock' : 'Click to mark Out of Stock'}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${prod.availability === 'Out of Stock' ? 'bg-rose-500' : 'bg-emerald-500 animate-pulse'}`} />
+                        <span>{prod.availability === 'Out of Stock' ? 'Out of Stock' : `${prod.stock ?? 5} in stock`}</span>
+                      </button>
                     </div>
 
                     <div className="mt-1 text-[11px] text-slate-500 flex items-center space-x-1">
@@ -1566,7 +1604,7 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
                 </div>
 
                 {/* Pricing & Stock Status */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2">
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">Selling Price (NPR) *</label>
                     <div className="relative">
@@ -1604,13 +1642,41 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
                     <label className="block text-xs font-bold text-slate-700 mb-1">Stock / Availability *</label>
                     <select
                       value={availability}
-                      onChange={(e) => setAvailability(e.target.value as any)}
+                      onChange={(e) => {
+                        const val = e.target.value as any;
+                        setAvailability(val);
+                        if (val === 'Out of Stock' || val === 'Sold Out') {
+                          setStockQuantity(0);
+                        } else if (stockQuantity <= 0) {
+                          setStockQuantity(5);
+                        }
+                      }}
                       className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-700"
                     >
                       {AVAILABILITY_OPTIONS.map(opt => (
                         <option key={opt} value={opt}>{opt}</option>
                       ))}
                     </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Units (स्टक संख्या)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={stockQuantity}
+                      onChange={(e) => {
+                        const val = Math.max(0, parseInt(e.target.value) || 0);
+                        setStockQuantity(val);
+                        if (val === 0 && availability !== 'Pre-Order') {
+                          setAvailability('Out of Stock');
+                        } else if (val > 0 && (availability === 'Out of Stock' || availability === 'Sold Out')) {
+                          setAvailability('In Stock');
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-900"
+                      placeholder="e.g. 5"
+                    />
                   </div>
                 </div>
 

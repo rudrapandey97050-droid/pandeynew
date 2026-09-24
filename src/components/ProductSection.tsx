@@ -3,6 +3,7 @@ import { Product, StoreSettings } from '../types.ts';
 import { ProductCard } from './ProductCard.tsx';
 import { AppleShowcaseBanner } from './AppleShowcaseBanner.tsx';
 import { Smartphone, RefreshCw, ShoppingBag, Search } from 'lucide-react';
+import { ErrorBoundary } from './ErrorBoundary.tsx';
 
 interface ProductSectionProps {
   products: Product[];
@@ -27,13 +28,19 @@ export const ProductSection: React.FC<ProductSectionProps> = ({
 }) => {
   const [inStockOnly, setInStockOnly] = React.useState(false);
 
+  const isProductAvailable = (p: Product) => {
+    if (p.availability === 'Out of Stock' || p.availability === 'Sold Out') return false;
+    if (p.availability === 'In Stock' || p.availability === 'Available' || p.availability === 'Limited Stock') return true;
+    return (p.stock ?? 5) > 0;
+  };
+
   // Only display visible products
   const visibleProducts = products.filter(p => !p.isHidden);
-  const inStockCount = visibleProducts.filter(p => (p.stock || 0) > 0).length;
+  const inStockCount = visibleProducts.filter(isProductAvailable).length;
 
   const filteredProducts = visibleProducts.filter(p => {
     // In-Stock Only filter
-    if (inStockOnly && (p.stock || 0) <= 0) {
+    if (inStockOnly && !isProductAvailable(p)) {
       return false;
     }
 
@@ -95,11 +102,13 @@ export const ProductSection: React.FC<ProductSectionProps> = ({
         
         {/* Apple Showcase Banner (When Apple or All is active and no active search filter) */}
         {showAppleShowcase && !searchQuery.trim() && (
-          <AppleShowcaseBanner
-            products={products}
-            onSelectProduct={onSelectProduct}
-            storeSettings={storeSettings}
-          />
+          <ErrorBoundary name="AppleShowcaseBanner">
+            <AppleShowcaseBanner
+              products={products}
+              onSelectProduct={onSelectProduct}
+              storeSettings={storeSettings}
+            />
+          </ErrorBoundary>
         )}
 
         {/* Section Header */}

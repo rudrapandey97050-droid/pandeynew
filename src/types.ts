@@ -275,6 +275,33 @@ export interface StoreSettings {
   lineupSubtitle?: string;
   lineupHeroProductId?: string;
   lineupProductIds?: string[];
+  // QR Payment & Digital Payment Settings
+  paymentQRs?: StorePaymentQR[];
+  showPaymentQRsInFooter?: boolean;
+  showPaymentQRsInContact?: boolean;
+  qrPaymentHeading?: string;
+  qrPaymentSubheading?: string;
+}
+
+export type PaymentQRProvider = 'fonepay' | 'esewa' | 'khalti' | 'bank' | 'nepalpay' | 'other';
+
+export interface StorePaymentQR {
+  id: string;
+  title: string;
+  provider: PaymentQRProvider;
+  accountName: string;
+  accountNumber?: string;
+  bankName?: string;
+  branchName?: string;
+  qrImageUrl: string;
+  instructions?: string;
+  isActive: boolean;
+  isPrimary?: boolean;
+  showInFooter?: boolean;
+  showInContact?: boolean;
+  displayOrder?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export type PreBookingStatus = 'New' | 'Contacted' | 'Confirmed' | 'Cancelled';

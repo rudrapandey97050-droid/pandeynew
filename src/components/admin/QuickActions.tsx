@@ -34,6 +34,7 @@ export type AdminTab =
   | 'repairs'
   | 'sheets'
   | 'cloudsql'
+  | 'qrPayments'
   | 'settings'
   | 'security'
   | 'users';

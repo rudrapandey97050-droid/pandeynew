@@ -22,7 +22,8 @@ import {
   UploadCloud,
   CheckCircle2,
   Database,
-  Users
+  Users,
+  QrCode
 } from 'lucide-react';
 import { Product, RateListItem, RepairBooking, PhoneValuationRequest, StoreSettings, StoreUserPermissions } from '../types.ts';
 import { AuthService } from '../services/authService.ts';
@@ -42,6 +43,7 @@ import { LineupManager } from './admin/LineupManager.tsx';
 import { GoogleSheetsManager } from './admin/GoogleSheetsManager.tsx';
 import { QuickActions } from './admin/QuickActions.tsx';
 import { AccountingPlatform } from './accounting/AccountingPlatform.tsx';
+import { QRPaymentsManager } from './admin/QRPaymentsManager.tsx';
 
 interface AdminPanelProps {
   onBackToStore: () => void;
@@ -55,7 +57,7 @@ interface AdminPanelProps {
   onNavigateToAccounting?: () => void;
 }
 
-type AdminTab = 'valuations' | 'upcoming' | 'products' | 'lineup' | 'rateList' | 'repairs' | 'sheets' | 'cloudsql' | 'settings' | 'security' | 'users';
+type AdminTab = 'valuations' | 'upcoming' | 'products' | 'lineup' | 'rateList' | 'repairs' | 'sheets' | 'cloudsql' | 'qrPayments' | 'settings' | 'security' | 'users';
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
   onBackToStore,
@@ -100,6 +102,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         return !!permissions.canManageRepairs;
       case 'sheets':
       case 'cloudsql':
+      case 'qrPayments':
       case 'settings':
         return !!permissions.canManageSettings;
       case 'security':
@@ -119,6 +122,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     'lineup',
     'sheets',
     'cloudsql',
+    'qrPayments',
     'settings',
     'users',
     'security'
@@ -374,6 +378,26 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
 
 
+          {/* QR Payment Codes & Storefront Display */}
+          {isTabAllowed('qrPayments') && (
+            <button
+              onClick={() => setActiveTab('qrPayments')}
+              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                activeTab === 'qrPayments'
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                  : 'text-slate-300 hover:bg-slate-900 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center space-x-2.5">
+                <QrCode className="w-4 h-4 text-emerald-400" />
+                <span>QR Payment (भुक्तानी)</span>
+              </div>
+              <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+                eSewa/FonePay
+              </span>
+            </button>
+          )}
+
           {/* Settings & Backup */}
           {isTabAllowed('settings') && (
             <button
@@ -505,6 +529,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               {activeTab === 'repairs' && 'Repair Service Appointments'}
               {activeTab === 'sheets' && 'Google Sheets Live Sync'}
               {activeTab === 'cloudsql' && 'Cloud SQL Database Management'}
+              {activeTab === 'qrPayments' && 'Store Payment QR Codes & Storefront Display'}
               {activeTab === 'settings' && 'Web Settings, Full Backup & Data Restore'}
               {activeTab === 'security' && 'Admin Security & 4-Digit PIN Reset'}
               {activeTab === 'users' && 'User & Staff Management (Role Permissions)'}
@@ -708,7 +733,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 />
               )}
 
-
+              {activeTab === 'qrPayments' && (
+                <QRPaymentsManager
+                  storeSettings={storeSettings}
+                  onSettingsChange={onDataRefresh}
+                />
+              )}
 
               {activeTab === 'settings' && (
                 <StoreSettingsManager

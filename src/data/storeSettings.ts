@@ -1,4 +1,5 @@
 import { StoreSettings } from '../types.ts';
+import { initialPaymentQRs } from './initialPaymentQRs.ts';
 
 export const initialStoreSettings: StoreSettings = {
   storeName: "Pandey Mobile Store",
@@ -28,5 +29,11 @@ export const initialStoreSettings: StoreSettings = {
     "apple-iphone-16",
     "apple-iphone-15",
     "apple-iphone-14"
-  ]
+  ],
+  // QR Payment & Storefront Display
+  paymentQRs: initialPaymentQRs,
+  showPaymentQRsInFooter: true,
+  showPaymentQRsInContact: true,
+  qrPaymentHeading: "डिजिटल भुक्तानी (Scan & Pay)",
+  qrPaymentSubheading: "FonePay, eSewa, Khalti तथा नेपालका सबै मोबाइल बैंकिङ्गबाट सुरक्षित भुक्तानी गर्नुहोस्"
 };
