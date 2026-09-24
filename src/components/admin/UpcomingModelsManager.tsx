@@ -75,6 +75,16 @@ export const UpcomingModelsManager: React.FC<UpcomingModelsManagerProps> = ({ on
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedBookingDetail, setSelectedBookingDetail] = useState<PreBookingRequest | null>(null);
 
+  // Deletion modals & Feedback
+  const [modelToDelete, setModelToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [bookingToDelete, setBookingToDelete] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
   // Settings Feedback
   const [settingsSaved, setSettingsSaved] = useState(false);
 
@@ -206,13 +216,29 @@ export const UpcomingModelsManager: React.FC<UpcomingModelsManagerProps> = ({ on
     setIsEditingModel(false);
     loadData();
     if (onRefresh) onRefresh();
+    showToast(editingModelId ? 'Upcoming model updated successfully!' : 'New upcoming model published!');
   };
 
   const handleDeleteModel = (id: string, modelName: string) => {
-    if (window.confirm(`Are you sure you want to delete "${modelName}"?`)) {
-      DataStorageService.deleteUpcomingModel(id);
+    setModelToDelete({ id, name: modelName });
+  };
+
+  const confirmDeleteModel = () => {
+    if (!modelToDelete) return;
+    const deletedName = modelToDelete.name;
+    DataStorageService.deleteUpcomingModel(modelToDelete.id);
+    setModelToDelete(null);
+    loadData();
+    if (onRefresh) onRefresh();
+    showToast(`"${deletedName}" successfully removed.`);
+  };
+
+  const handleRestoreDefaults = () => {
+    if (window.confirm('Restore original upcoming models lineup (iPhone 18 Pro Max, iPhone 17 Air, Galaxy S26 Ultra, etc.)?')) {
+      DataStorageService.resetUpcomingModelsToDefault();
       loadData();
       if (onRefresh) onRefresh();
+      showToast('Default upcoming models catalog restored.');
     }
   };
 
@@ -234,11 +260,12 @@ export const UpcomingModelsManager: React.FC<UpcomingModelsManagerProps> = ({ on
     setSettingsSaved(true);
     setTimeout(() => setSettingsSaved(false), 2500);
     if (onRefresh) onRefresh();
+    showToast('Popup settings saved successfully.');
   };
 
   const handleResetPopupSession = () => {
     DataStorageService.resetPopupDismissed();
-    alert('Popup view cookie has been reset! The popup will now trigger automatically on the next store visit.');
+    showToast('Popup view session reset! The banner will trigger on the next visit.');
   };
 
   // Booking status changes
@@ -246,15 +273,21 @@ export const UpcomingModelsManager: React.FC<UpcomingModelsManagerProps> = ({ on
     DataStorageService.updatePreBookingStatus(id, status);
     loadData();
     if (onRefresh) onRefresh();
+    showToast(`Booking status updated to ${status}`);
   };
 
   const handleDeleteBooking = (id: string) => {
-    if (window.confirm('Delete this customer pre-booking record?')) {
-      DataStorageService.deletePreBooking(id);
-      setSelectedBookingDetail(null);
-      loadData();
-      if (onRefresh) onRefresh();
-    }
+    setBookingToDelete(id);
+  };
+
+  const confirmDeleteBooking = () => {
+    if (!bookingToDelete) return;
+    DataStorageService.deletePreBooking(bookingToDelete);
+    setBookingToDelete(null);
+    setSelectedBookingDetail(null);
+    loadData();
+    if (onRefresh) onRefresh();
+    showToast('Pre-booking lead removed.');
   };
 
   // Filtered Bookings
@@ -345,32 +378,53 @@ export const UpcomingModelsManager: React.FC<UpcomingModelsManagerProps> = ({ on
       {/* ================= TAB 1: UPCOMING MODELS ================= */}
       {subTab === 'models' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Configured Upcoming Models
+              Configured Upcoming Models ({models.length})
             </span>
-            <button
-              onClick={handleOpenAdd}
-              className="inline-flex items-center space-x-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow transition cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Upcoming Model</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleRestoreDefaults}
+                className="inline-flex items-center space-x-1 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
+                title="Restore original factory upcoming models catalog"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Restore Defaults</span>
+              </button>
+              <button
+                onClick={handleOpenAdd}
+                className="inline-flex items-center space-x-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow transition cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Upcoming Model</span>
+              </button>
+            </div>
           </div>
 
           {models.length === 0 ? (
-            <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-12 text-center space-y-3">
+            <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-12 text-center space-y-4">
               <Sparkles className="w-10 h-10 text-slate-400 mx-auto" />
               <h4 className="text-base font-bold text-slate-700">No Upcoming Models Configured</h4>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                Add an upcoming phone to feature it in the automatic first-visit popup and the /upcoming-models page.
+                All upcoming models have been removed or deleted. You can create a new model or restore default models anytime.
               </p>
-              <button
-                onClick={handleOpenAdd}
-                className="px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-xl shadow hover:bg-indigo-700 transition cursor-pointer"
-              >
-                Add Your First Model
-              </button>
+              <div className="flex items-center justify-center gap-3">
+                <button
+                  onClick={handleRestoreDefaults}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Restore Defaults</span>
+                </button>
+                <button
+                  onClick={handleOpenAdd}
+                  className="px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-xl shadow hover:bg-indigo-700 transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add New Model</span>
+                </button>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1277,6 +1331,103 @@ export const UpcomingModelsManager: React.FC<UpcomingModelsManagerProps> = ({ on
               </a>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Delete Model Confirmation Modal */}
+      {modelToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  Delete Upcoming Model?
+                </h3>
+                <p className="text-xs text-slate-500">
+                  यो मोडल स्थायी रूपमा हटाइनेछ (Permanent Removal)
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-rose-50/50 border border-rose-100 rounded-2xl">
+              <p className="text-xs text-rose-950 leading-relaxed">
+                Are you sure you want to delete <strong className="font-bold underline">{modelToDelete.name}</strong>?
+                This will immediately remove this model from the upcoming models catalog, navbar quick menus, and the first-visit popup showcase.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end space-x-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setModelToDelete(null)}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
+              >
+                Cancel (रद्द गर्नुहोस्)
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteModel}
+                className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-lg shadow-rose-600/20 transition cursor-pointer flex items-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Delete Model (हटाउनुहोस्)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Booking Confirmation Modal */}
+      {bookingToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-slate-100 space-y-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  Delete Pre-Booking Lead?
+                </h3>
+                <p className="text-xs text-slate-500">
+                  ग्राहकको प्रि-बुकिङ रेकर्ड हटाउनुहोस्
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-xs text-slate-700">
+              Are you sure you want to delete this customer pre-booking inquiry? This action cannot be undone.
+            </div>
+
+            <div className="flex items-center justify-end space-x-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setBookingToDelete(null)}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteBooking}
+                className="px-4 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow-lg shadow-rose-600/20 transition cursor-pointer flex items-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Delete Lead</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Action Toast Feedback */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center space-x-2 px-4 py-3 bg-slate-900 text-white text-xs font-bold rounded-2xl shadow-2xl border border-slate-800 animate-slideUp">
+          <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{toastMessage}</span>
         </div>
       )}
     </div>

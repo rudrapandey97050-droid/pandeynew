@@ -296,6 +296,17 @@ export class FirestoreService {
     }
   }
 
+  static async deleteUpcomingModel(modelId: string): Promise<void> {
+    if (!db) return;
+    try {
+      await deleteDoc(doc(db, 'upcomingModels', modelId));
+    } catch (error: any) {
+      if (error?.code !== 'unavailable' && error?.code !== 'permission-denied') {
+        console.warn('Firestore: Error deleting upcoming model from cloud', error);
+      }
+    }
+  }
+
   static subscribeUpcomingModels(onUpdate: (models: UpcomingModel[]) => void): Unsubscribe | null {
     if (!db) return null;
     try {
@@ -305,9 +316,7 @@ export class FirestoreService {
         snapshot.forEach((docSnap) => {
           items.push(docSnap.data() as UpcomingModel);
         });
-        if (items.length > 0) {
-          onUpdate(items);
-        }
+        onUpdate(items);
       }, (err) => {
         if (err?.code !== 'unavailable' && err?.code !== 'permission-denied' && err?.code !== 'resource-exhausted') {
           console.warn('Firestore: UpcomingModels listener error', err);

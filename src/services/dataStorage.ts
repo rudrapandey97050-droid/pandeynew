@@ -797,14 +797,7 @@ export class DataStorageService {
       const data = localStorage.getItem(STORAGE_KEYS.UPCOMING_MODELS);
       if (data !== null) {
         const parsed = JSON.parse(data);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const existingSlugs = new Set(parsed.map((p: UpcomingModel) => p.slug));
-          const toAdd = initialUpcomingModels.filter(m => !existingSlugs.has(m.slug) && !parsed.some((p: UpcomingModel) => p.id === m.id));
-          if (toAdd.length > 0) {
-            const merged = [...parsed, ...toAdd];
-            this.saveUpcomingModels(merged);
-            return merged;
-          }
+        if (Array.isArray(parsed)) {
           return parsed;
         }
       }
@@ -843,12 +836,13 @@ export class DataStorageService {
     };
     models.unshift(newModel);
     this.saveUpcomingModels(models);
+    FirestoreService.saveUpcomingModel(newModel).catch(() => {});
     return newModel;
   }
 
   static updateUpcomingModel(id: string, updates: Partial<UpcomingModel>): UpcomingModel | null {
     const models = this.getUpcomingModels();
-    const index = models.findIndex(m => m.id === id);
+    const index = models.findIndex(m => m.id === id || m.slug === id);
     if (index === -1) return null;
 
     const updated: UpcomingModel = {
@@ -858,15 +852,25 @@ export class DataStorageService {
     };
     models[index] = updated;
     this.saveUpcomingModels(models);
+    FirestoreService.saveUpcomingModel(updated).catch(() => {});
     return updated;
   }
 
   static deleteUpcomingModel(id: string): boolean {
     const models = this.getUpcomingModels();
-    const filtered = models.filter(m => m.id !== id);
+    const filtered = models.filter(m => m.id !== id && m.slug !== id);
     if (filtered.length === models.length) return false;
     this.saveUpcomingModels(filtered);
+    FirestoreService.deleteUpcomingModel(id).catch(() => {});
     return true;
+  }
+
+  static resetUpcomingModelsToDefault(): UpcomingModel[] {
+    this.saveUpcomingModels(initialUpcomingModels);
+    for (const m of initialUpcomingModels) {
+      FirestoreService.saveUpcomingModel(m).catch(() => {});
+    }
+    return initialUpcomingModels;
   }
 
   // PRE-BOOKING REQUESTS

@@ -53,13 +53,30 @@ export const UpcomingModelsPage: React.FC<UpcomingModelsPageProps> = ({
   const finalWa = cleanWa.startsWith('977') ? cleanWa : `977${cleanWa}`;
 
   useEffect(() => {
-    const all = DataStorageService.getUpcomingModels().filter(m => m.isActive);
-    all.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
-    setModels(all);
+    const refreshData = () => {
+      const all = DataStorageService.getUpcomingModels().filter(m => m.isActive);
+      all.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+      setModels(all);
+    };
+
+    refreshData();
 
     if (initialSlug) {
       setSelectedSlug(initialSlug);
     }
+
+    const handleSync = (e: any) => {
+      if (!e.detail || e.detail.key === 'upcoming' || e.detail.key === 'all') {
+        refreshData();
+      }
+    };
+
+    window.addEventListener('pms_data_sync', handleSync);
+    window.addEventListener('storage', refreshData);
+    return () => {
+      window.removeEventListener('pms_data_sync', handleSync);
+      window.removeEventListener('storage', refreshData);
+    };
   }, [initialSlug]);
 
   const selectedModel = selectedSlug
