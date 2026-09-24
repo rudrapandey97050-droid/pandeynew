@@ -64,6 +64,41 @@ function notifyDataChange(keyName: string) {
   }
 }
 
+// Demo entity detection helpers to prevent demo data from ever showing
+export const isDemoProductId = (id: string): boolean => {
+  if (!id) return false;
+  return (
+    id.startsWith('apple-iphone-') ||
+    id.startsWith('prod-demo-') ||
+    id === 'iphone-16-pro-max' ||
+    id === 'iphone-16-pro' ||
+    id === 'iphone-16' ||
+    id === 'iphone-15'
+  );
+};
+
+export const isDemoRateId = (id: string): boolean => {
+  if (!id) return false;
+  return id.startsWith('rate-ip-') || id.startsWith('used-ip-') || id.startsWith('rate-demo-');
+};
+
+export const isDemoUpcomingId = (id: string): boolean => {
+  if (!id) return false;
+  return (
+    id.startsWith('up-iphone-') ||
+    id.startsWith('up-samsung-') ||
+    id === 'iphone-18-pro-max' ||
+    id === 'iphone-17-series' ||
+    id === 'samsung-galaxy-s26-ultra' ||
+    id === 'samsung-z-fold-7'
+  );
+};
+
+export const isDemoReviewId = (id: string): boolean => {
+  if (!id) return false;
+  return id.startsWith('rev-') || id.startsWith('review-demo-');
+};
+
 export class DataStorageService {
   /**
    * Subscribe to live data updates across all open tabs, windows, and views
@@ -144,21 +179,26 @@ export class DataStorageService {
     };
   }
 
-  // Products (Initialized with official iPhone lineup & fully editable/controllable by Admin)
+  // Products (Fully controllable by Admin, empty by default with zero demo data)
   static getProducts(): Product[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
       if (data !== null) {
         const parsed = JSON.parse(data);
         if (Array.isArray(parsed)) {
-          return parsed.map(p => this.normalizeProduct(p));
+          const nonDemo = parsed.filter(p => p && !isDemoProductId(p.id)).map(p => this.normalizeProduct(p));
+          if (nonDemo.length !== parsed.length) {
+            this.saveProducts(nonDemo);
+          }
+          return nonDemo;
         }
       }
     } catch (e) {
       console.error('Error reading products from storage', e);
     }
-    // Only initialize with official Apple lineup if key has NEVER been set
-    const initialWithStock: Product[] = initialProducts.map(p => this.normalizeProduct(p));
+    const initialWithStock: Product[] = initialProducts
+      .filter(p => p && !isDemoProductId(p.id))
+      .map(p => this.normalizeProduct(p));
     this.saveProducts(initialWithStock);
     return initialWithStock;
   }
@@ -305,18 +345,26 @@ export class DataStorageService {
     return products;
   }
 
-  // Rate List
+  // Rate List (No demo rate data)
   static getManualRateList(): RateListItem[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.RATE_LIST);
-      if (data) {
-        return JSON.parse(data);
+      if (data !== null) {
+        const parsed = JSON.parse(data);
+        if (Array.isArray(parsed)) {
+          const nonDemo = parsed.filter(i => i && !isDemoRateId(i.id));
+          if (nonDemo.length !== parsed.length) {
+            this.saveRateList(nonDemo);
+          }
+          return nonDemo;
+        }
       }
     } catch (e) {
       console.error('Error reading rate list', e);
     }
-    this.saveRateList(initialUsedIPhoneRateList);
-    return initialUsedIPhoneRateList;
+    const cleanInitial = initialUsedIPhoneRateList.filter(i => i && !isDemoRateId(i.id));
+    this.saveRateList(cleanInitial);
+    return cleanInitial;
   }
 
   static getRateList(): RateListItem[] {
@@ -791,21 +839,26 @@ export class DataStorageService {
     }
   }
 
-  // UPCOMING MODELS
+  // UPCOMING MODELS (No demo models)
   static getUpcomingModels(): UpcomingModel[] {
     try {
       const data = localStorage.getItem(STORAGE_KEYS.UPCOMING_MODELS);
       if (data !== null) {
         const parsed = JSON.parse(data);
         if (Array.isArray(parsed)) {
-          return parsed;
+          const nonDemo = parsed.filter(m => m && !isDemoUpcomingId(m.id) && !isDemoUpcomingId(m.slug));
+          if (nonDemo.length !== parsed.length) {
+            this.saveUpcomingModels(nonDemo);
+          }
+          return nonDemo;
         }
       }
     } catch (e) {
       console.error('Error reading upcoming models', e);
     }
-    this.saveUpcomingModels(initialUpcomingModels);
-    return initialUpcomingModels;
+    const cleanInitial = initialUpcomingModels.filter(m => m && !isDemoUpcomingId(m.id) && !isDemoUpcomingId(m.slug));
+    this.saveUpcomingModels(cleanInitial);
+    return cleanInitial;
   }
 
   static saveUpcomingModels(models: UpcomingModel[]): void {
@@ -996,21 +1049,27 @@ export class DataStorageService {
   }
 
   // ==========================================
-  // CUSTOMER REVIEWS & TESTIMONIALS
+  // CUSTOMER REVIEWS & TESTIMONIALS (No demo reviews)
   // ==========================================
   static getCustomerReviews(): CustomerReview[] {
     try {
       const stored = localStorage.getItem(STORAGE_KEYS.CUSTOMER_REVIEWS);
-      if (!stored) {
-        this.saveCustomerReviews(initialCustomerReviews);
-        return initialCustomerReviews;
+      if (stored !== null) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          const nonDemo = parsed.filter(r => r && !isDemoReviewId(r.id));
+          if (nonDemo.length !== parsed.length) {
+            this.saveCustomerReviews(nonDemo);
+          }
+          return nonDemo;
+        }
       }
-      const parsed = JSON.parse(stored);
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : initialCustomerReviews;
     } catch (e) {
       console.error('Error reading customer reviews', e);
-      return initialCustomerReviews;
     }
+    const cleanInitial = initialCustomerReviews.filter(r => r && !isDemoReviewId(r.id));
+    this.saveCustomerReviews(cleanInitial);
+    return cleanInitial;
   }
 
   static saveCustomerReviews(reviews: CustomerReview[]): void {
@@ -1372,6 +1431,66 @@ export class DataStorageService {
   }
 
   /**
+   * Complete demo data purge: removes any demo products, demo rates, demo upcoming models, and demo reviews
+   */
+  static clearAllDemoData(): { products: number; rates: number; upcoming: number; reviews: number } {
+    const rawProds = this.getProducts();
+    const cleanProds = rawProds.filter(p => p && !isDemoProductId(p.id));
+    this.saveProducts(cleanProds);
+
+    const rawRates = this.getManualRateList();
+    const cleanRates = rawRates.filter(r => r && !isDemoRateId(r.id));
+    this.saveRateList(cleanRates);
+
+    const rawUpcoming = this.getUpcomingModels();
+    const cleanUpcoming = rawUpcoming.filter(m => m && !isDemoUpcomingId(m.id) && !isDemoUpcomingId(m.slug));
+    this.saveUpcomingModels(cleanUpcoming);
+
+    const rawReviews = this.getCustomerReviews();
+    const cleanReviews = rawReviews.filter(r => r && !isDemoReviewId(r.id));
+    this.saveCustomerReviews(cleanReviews);
+
+    // Clean storeSettings demo lineup references
+    const settings = this.getStoreSettings();
+    let settingsChanged = false;
+    if (settings.lineupHeroProductId && isDemoProductId(settings.lineupHeroProductId)) {
+      settings.lineupHeroProductId = undefined;
+      settingsChanged = true;
+    }
+    if (settings.lineupProductIds && settings.lineupProductIds.length > 0) {
+      const filteredLineupIds = settings.lineupProductIds.filter(id => !isDemoProductId(id));
+      if (filteredLineupIds.length !== settings.lineupProductIds.length) {
+        settings.lineupProductIds = filteredLineupIds;
+        settingsChanged = true;
+      }
+    }
+    if (settingsChanged) {
+      this.saveStoreSettings(settings, true);
+    }
+
+    // Trigger cloud purge
+    try {
+      FirestoreService.purgeCloudDemoData().catch(() => {});
+    } catch {
+      // non-blocking
+    }
+
+    // Notify all UI listeners
+    notifyDataChange('products');
+    notifyDataChange('rateList');
+    notifyDataChange('upcoming');
+    notifyDataChange('reviews');
+    notifyDataChange('settings');
+
+    return {
+      products: rawProds.length - cleanProds.length,
+      rates: rawRates.length - cleanRates.length,
+      upcoming: rawUpcoming.length - cleanUpcoming.length,
+      reviews: rawReviews.length - cleanReviews.length,
+    };
+  }
+
+  /**
    * Factory Reset (Restores initial factory defaults for all sections)
    */
   static resetAllDataToFactoryDefaults(): void {
@@ -1385,5 +1504,16 @@ export class DataStorageService {
     this.saveStoreSettings(initialStoreSettings);
     this.savePopupSettings(initialPopupSettings);
     this.resetPopupDismissed();
+    this.clearAllDemoData();
   }
 }
+
+// Auto-run sanitation on load to clean any leftover demo data in user's browser
+try {
+  if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+    DataStorageService.clearAllDemoData();
+  }
+} catch {
+  // non-blocking
+}
+

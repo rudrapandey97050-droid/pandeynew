@@ -8,35 +8,7 @@ export interface CustomerReview {
   phoneBoughtOrRepaired: string;
 }
 
-export const initialReviews: CustomerReview[] = [
-  {
-    id: "rev-1",
-    name: "Bikash Thapa",
-    location: "Traffic Chowk, Butwal",
-    rating: 5,
-    date: "2 days ago",
-    comment: "Pandey Mobile Store बाट मैले iPhone 15 Pro Max लिएको, एकदम सफा कन्डिसन र ब्याट्री हेल्थ राम्रो थियो। बुटवलमा सबभन्दा भरपर्दो पसल!",
-    phoneBoughtOrRepaired: "Apple iPhone 15 Pro Max"
-  },
-  {
-    id: "rev-2",
-    name: "Sunita Shrestha",
-    location: "Golpark, Butwal",
-    rating: 5,
-    date: "1 week ago",
-    comment: "मेरो पुरानो Samsung फोन एक्सचेन्ज गरेर नयाँ फोन लिएँ। तत्काल मूल्यांकन गरेर राम्रो रेट दिनुभयो। Staff व्यवहार पनि निकै राम्रो।",
-    phoneBoughtOrRepaired: "Phone Exchange & Upgrade"
-  },
-  {
-    id: "rev-3",
-    name: "Ramesh Poudel",
-    location: "Drivertole, Butwal",
-    rating: 5,
-    date: "2 weeks ago",
-    comment: "Display change गराएको, ओरिजिनल पार्ट र ३० मिनेटमै रिपेयर गरेर दिनुभयो। वारेन्टी पनि दिनुहुन्छ।",
-    phoneBoughtOrRepaired: "Screen Replacement Service"
-  }
-];
+export const initialReviews: CustomerReview[] = [];
 
 export interface StoreService {
   id: string;

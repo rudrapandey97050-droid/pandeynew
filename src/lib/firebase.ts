@@ -30,47 +30,30 @@ export const firebaseConfig: Record<string, any> = {
   appId: appletConfig.appId || import.meta.env.VITE_FIREBASE_APP_ID || '',
   apiKey: appletConfig.apiKey || import.meta.env.VITE_FIREBASE_API_KEY || '',
   authDomain: appletConfig.authDomain || import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
-  firestoreDatabaseId: appletConfig.firestoreDatabaseId || import.meta.env.VITE_FIREBASE_DATABASE_ID || '(default)',
+  firestoreDatabaseId: (appletConfig as any).firestoreDatabaseId || import.meta.env.VITE_FIREBASE_DATABASE_ID || '(default)',
   storageBucket: appletConfig.storageBucket || import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
   messagingSenderId: appletConfig.messagingSenderId || import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || ''
 };
 
 let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
-let db: Firestore | undefined;
+// Firebase Firestore explicitly disconnected as requested by administrator ("disconnect to google cloud firebase firestore and only website backup google drive")
+let db: Firestore | undefined = undefined;
 
 try {
   if (firebaseConfig.apiKey && firebaseConfig.projectId) {
     app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
     auth = getAuth(app);
-    const dbId = (firebaseConfig as { firestoreDatabaseId?: string }).firestoreDatabaseId || '(default)';
-
-    try {
-      // Use experimentalForceLongPolling to guarantee rock-solid connectivity
-      // across Cloud Run, sandboxed iframes, proxies, and preview environments.
-      db = initializeFirestore(app, {
-        experimentalForceLongPolling: true,
-        localCache: memoryLocalCache(),
-      }, dbId);
-    } catch {
-      db = getFirestore(app, dbId);
-    }
+    // Firestore is disconnected; website backup is exclusively handled via Google Drive
+    db = undefined;
   }
 } catch (err) {
   console.warn('Firebase optional initialization bypassed:', err);
 }
 
-// Check connection to Firestore backend gracefully with timeout and non-blocking fallback
+// Firestore backend is explicitly disconnected
 export async function testFirestoreConnection(): Promise<boolean> {
-  if (!db) return false;
-  try {
-    const checkPromise = getDoc(doc(db, 'settings', 'store'));
-    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
-    const res = await Promise.race([checkPromise, timeoutPromise]);
-    return res !== null;
-  } catch {
-    return false;
-  }
+  return false;
 }
 
 export const googleProvider = new GoogleAuthProvider();

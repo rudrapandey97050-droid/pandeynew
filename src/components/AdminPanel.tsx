@@ -16,20 +16,19 @@ import {
   UserCheck,
   Sparkles,
   Key,
-  Trash2,
   Calculator,
   Cloud,
   UploadCloud,
   CheckCircle2,
   Database,
   Users,
-  QrCode
+  QrCode,
+  HardDrive
 } from 'lucide-react';
 import { Product, RateListItem, RepairBooking, PhoneValuationRequest, StoreSettings, StoreUserPermissions } from '../types.ts';
 import { AuthService } from '../services/authService.ts';
 import { UserService, DEFAULT_ADMIN_PERMISSIONS } from '../services/userService.ts';
 import { DataStorageService } from '../services/dataStorage.ts';
-import { VersionService } from '../services/versionService.ts';
 import { FirestoreService } from '../services/firestoreService.ts';
 import { ValuationsManager } from './admin/ValuationsManager.tsx';
 import { QuickProductManager } from './QuickProductManager.tsx';
@@ -540,75 +539,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
 
           <div className="flex items-center space-x-2.5 flex-wrap gap-y-2">
-            {/* Firebase Cloud Connection & 1-Click Sync (Only for authorized managers) */}
+            {/* Google Drive Cloud Backup Status & Quick Access */}
             {canManageSettings && (
               <div className="flex items-center space-x-1.5 bg-emerald-50 border border-emerald-200/80 px-2.5 py-1 rounded-xl text-[11px] font-semibold text-emerald-800 shadow-xs">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <Cloud className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span className="hidden xl:inline text-slate-700">Firebase:</span>
-                <span className="text-emerald-700 font-bold">Connected</span>
+                <HardDrive className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span className="hidden xl:inline text-slate-700">Backup:</span>
+                <span className="text-emerald-700 font-bold">Google Drive</span>
                 <button
                   type="button"
-                  onClick={handleSyncToFirebase}
-                  disabled={isSyncingCloud}
-                  className="ml-1 px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer flex items-center space-x-1 shadow-xs disabled:opacity-50"
-                  title="Synchronize all products, valuations, repairs, rate-list & settings to Firebase Cloud"
+                  onClick={() => setActiveTab('settings')}
+                  className="ml-1 px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer flex items-center space-x-1 shadow-xs"
+                  title="Open Google Drive Cloud Backup & Recovery"
                 >
-                  {isSyncingCloud ? (
-                    <RefreshCw className="w-3 h-3 animate-spin" />
-                  ) : (
-                    <UploadCloud className="w-3 h-3" />
-                  )}
-                  <span>{isSyncingCloud ? 'Syncing...' : 'Sync Cloud'}</span>
+                  <UploadCloud className="w-3 h-3" />
+                  <span>Drive Backup</span>
                 </button>
               </div>
             )}
 
-            {/* Accounting Button (Only if user has accounting permission) */}
-            {canAccessAccounting && (
-              <button
-                id="admin-accounting-top-bar-btn"
-                type="button"
-                onClick={handleOpenAccounting}
-                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all flex items-center space-x-1.5 shadow-md shadow-emerald-600/20 border border-emerald-500 cursor-pointer"
-                title="Open the separate Accounting Platform"
-              >
-                <Calculator className="w-3.5 h-3.5" />
-                <span>Accounting Platform (लेखा)</span>
-              </button>
-            )}
-
-            {/* Settings Clean Button (Only for admins/settings managers) */}
-            {canManageSettings && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (window.confirm('के तपाई सबै डेमो / Pre-Owned फोनहरू हटाई नयाँ अपडेट लोड (Hard Refresh) गर्न चाहनुहुन्छ?')) {
-                    DataStorageService.removePreOwnedProducts();
-                    onDataRefresh();
-                    VersionService.forceHardRefresh(true);
-                  }
-                }}
-                className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl transition-colors flex items-center space-x-1.5 border border-rose-300 shadow-xs cursor-pointer"
-                title="डेमो फोनहरू हटाउनुहोस् र क्यास हटाई रिफ्रेस गर्नुहोस्"
-              >
-                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                <span>डेमो हटाई रिफ्रेस (Clean & Refresh)</span>
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={() => {
-                onDataRefresh();
-                VersionService.forceHardRefresh(true);
-              }}
-              className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs rounded-xl transition-colors flex items-center space-x-1.5 border border-amber-300 shadow-xs cursor-pointer"
-              title="ब्राउजर क्यास हटाई नयाँ फाइलहरू र अपडेट लोड गर्नुहोस्"
-            >
-              <RefreshCw className="w-3.5 h-3.5 text-amber-600" />
-              <span>क्यास हटाई रिफ्रेस (Hard Reload)</span>
-            </button>
             <button
               type="button"
               onClick={onBackToStore}

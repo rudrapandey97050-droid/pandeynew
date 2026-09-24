@@ -22,27 +22,26 @@ import {
   CustomerOrder,
   CustomerReview
 } from '../types.ts';
-import { DataStorageService } from './dataStorage.ts';
+import {
+  DataStorageService,
+  isDemoProductId,
+  isDemoRateId,
+  isDemoUpcomingId,
+  isDemoReviewId
+} from './dataStorage.ts';
 
 export class FirestoreService {
-  private static isAvailable = true;
-  private static hasTestedConnection = false;
+  // Disconnected as requested: Website backup is handled exclusively through Google Drive
+  private static isAvailable = false;
+  private static hasTestedConnection = true;
 
   static async initConnection(): Promise<boolean> {
-    if (this.hasTestedConnection) return this.isAvailable;
-    this.hasTestedConnection = true;
-    try {
-      const connected = await testFirestoreConnection();
-      this.isAvailable = connected;
-      return connected;
-    } catch {
-      this.isAvailable = false;
-      return false;
-    }
+    this.isAvailable = false;
+    return false;
   }
 
   static checkConnection(): boolean {
-    return Boolean(db);
+    return false;
   }
 
   // --- Valuations ---
@@ -216,11 +215,12 @@ export class FirestoreService {
       return onSnapshot(colRef, (snapshot) => {
         const items: Product[] = [];
         snapshot.forEach((docSnap) => {
-          items.push(docSnap.data() as Product);
+          const p = docSnap.data() as Product;
+          if (p && !isDemoProductId(p.id)) {
+            items.push(p);
+          }
         });
-        if (items.length > 0) {
-          onUpdate(items);
-        }
+        onUpdate(items);
       }, (err) => {
         if (err?.code !== 'unavailable' && err?.code !== 'permission-denied' && err?.code !== 'resource-exhausted') {
           console.warn('Firestore: Products listener error', err);
@@ -265,11 +265,12 @@ export class FirestoreService {
       return onSnapshot(colRef, (snapshot) => {
         const items: RateListItem[] = [];
         snapshot.forEach((docSnap) => {
-          items.push(docSnap.data() as RateListItem);
+          const r = docSnap.data() as RateListItem;
+          if (r && !isDemoRateId(r.id)) {
+            items.push(r);
+          }
         });
-        if (items.length > 0) {
-          onUpdate(items);
-        }
+        onUpdate(items);
       }, (err) => {
         if (err?.code !== 'unavailable' && err?.code !== 'permission-denied' && err?.code !== 'resource-exhausted') {
           console.warn('Firestore: RateList listener error', err);
@@ -314,7 +315,10 @@ export class FirestoreService {
       return onSnapshot(colRef, (snapshot) => {
         const items: UpcomingModel[] = [];
         snapshot.forEach((docSnap) => {
-          items.push(docSnap.data() as UpcomingModel);
+          const m = docSnap.data() as UpcomingModel;
+          if (m && !isDemoUpcomingId(m.id) && !isDemoUpcomingId(m.slug)) {
+            items.push(m);
+          }
         });
         onUpdate(items);
       }, (err) => {
@@ -382,51 +386,69 @@ export class FirestoreService {
     try {
       // 1. Fetch live products from cloud
       const prodDocs = await getDocs(collection(db, 'products'));
-      if (!prodDocs.empty) {
-        const cloudProducts: Product[] = [];
-        prodDocs.forEach((d) => cloudProducts.push(d.data() as Product));
-        if (cloudProducts.length > 0) {
-          DataStorageService.saveProducts(cloudProducts);
+      const cloudProducts: Product[] = [];
+      prodDocs.forEach((d) => {
+        const p = d.data() as Product;
+        if (p && !isDemoProductId(p.id)) {
+          cloudProducts.push(p);
+        } else if (p && isDemoProductId(p.id)) {
+          deleteDoc(d.ref).catch(() => {});
         }
-      }
+      });
+      DataStorageService.saveProducts(cloudProducts);
 
       // 2. Fetch live rate list from cloud
       const rateDocs = await getDocs(collection(db, 'rateList'));
-      if (!rateDocs.empty) {
-        const cloudRates: RateListItem[] = [];
-        rateDocs.forEach((d) => cloudRates.push(d.data() as RateListItem));
-        if (cloudRates.length > 0) {
-          DataStorageService.saveRateList(cloudRates);
+      const cloudRates: RateListItem[] = [];
+      rateDocs.forEach((d) => {
+        const r = d.data() as RateListItem;
+        if (r && !isDemoRateId(r.id)) {
+          cloudRates.push(r);
+        } else if (r && isDemoRateId(r.id)) {
+          deleteDoc(d.ref).catch(() => {});
         }
-      }
+      });
+      DataStorageService.saveRateList(cloudRates);
 
       // 3. Fetch live upcoming models from cloud
       const upDocs = await getDocs(collection(db, 'upcomingModels'));
-      if (!upDocs.empty) {
-        const cloudUpcoming: UpcomingModel[] = [];
-        upDocs.forEach((d) => cloudUpcoming.push(d.data() as UpcomingModel));
-        if (cloudUpcoming.length > 0) {
-          DataStorageService.saveUpcomingModels(cloudUpcoming);
+      const cloudUpcoming: UpcomingModel[] = [];
+      upDocs.forEach((d) => {
+        const m = d.data() as UpcomingModel;
+        if (m && !isDemoUpcomingId(m.id) && !isDemoUpcomingId(m.slug)) {
+          cloudUpcoming.push(m);
+        } else if (m && (isDemoUpcomingId(m.id) || isDemoUpcomingId(m.slug))) {
+          deleteDoc(d.ref).catch(() => {});
         }
-      }
+      });
+      DataStorageService.saveUpcomingModels(cloudUpcoming);
 
       // 4. Fetch live store settings from cloud
       const setDocSnap = await getDoc(doc(db, 'settings', 'store'));
       if (setDocSnap.exists()) {
         const cloudData = setDocSnap.data() as StoreSettings;
+        if (cloudData.lineupHeroProductId && isDemoProductId(cloudData.lineupHeroProductId)) {
+          cloudData.lineupHeroProductId = undefined;
+        }
+        if (cloudData.lineupProductIds && cloudData.lineupProductIds.length > 0) {
+          cloudData.lineupProductIds = cloudData.lineupProductIds.filter(id => !isDemoProductId(id));
+        }
         this.lastSavedSettingsJson = JSON.stringify(cloudData);
         DataStorageService.saveStoreSettings(cloudData, false);
       }
 
       // 5. Fetch live customer reviews from cloud
       const revDocs = await getDocs(collection(db, 'customerReviews'));
-      if (!revDocs.empty) {
-        const cloudReviews: CustomerReview[] = [];
-        revDocs.forEach((d) => cloudReviews.push(d.data() as CustomerReview));
-        if (cloudReviews.length > 0) {
-          DataStorageService.saveCustomerReviews(cloudReviews);
+      const cloudReviews: CustomerReview[] = [];
+      revDocs.forEach((d) => {
+        const rev = d.data() as CustomerReview;
+        if (rev && !isDemoReviewId(rev.id)) {
+          cloudReviews.push(rev);
+        } else if (rev && isDemoReviewId(rev.id)) {
+          deleteDoc(d.ref).catch(() => {});
         }
-      }
+      });
+      DataStorageService.saveCustomerReviews(cloudReviews);
 
       return true;
     } catch (e: any) {
@@ -478,11 +500,12 @@ export class FirestoreService {
       return onSnapshot(colRef, (snapshot) => {
         const items: CustomerReview[] = [];
         snapshot.forEach((docSnap) => {
-          items.push(docSnap.data() as CustomerReview);
+          const r = docSnap.data() as CustomerReview;
+          if (r && !isDemoReviewId(r.id)) {
+            items.push(r);
+          }
         });
-        if (items.length > 0) {
-          onUpdate(items);
-        }
+        onUpdate(items);
       }, (err) => {
         if (err?.code !== 'unavailable' && err?.code !== 'permission-denied' && err?.code !== 'resource-exhausted') {
           console.warn('Firestore: Customer reviews listener error', err);
@@ -490,6 +513,45 @@ export class FirestoreService {
       });
     } catch (e) {
       return null;
+    }
+  }
+
+  /**
+   * Complete cloud purge: removes any demo products, demo rates, demo upcoming models, and demo reviews from Firestore
+   */
+  static async purgeCloudDemoData(): Promise<void> {
+    if (!db) return;
+    try {
+      // 1. Purge demo products
+      const pSnap = await getDocs(collection(db, 'products'));
+      for (const d of pSnap.docs) {
+        if (isDemoProductId(d.id)) {
+          await deleteDoc(d.ref).catch(() => {});
+        }
+      }
+      // 2. Purge demo rates
+      const rSnap = await getDocs(collection(db, 'rateList'));
+      for (const d of rSnap.docs) {
+        if (isDemoRateId(d.id)) {
+          await deleteDoc(d.ref).catch(() => {});
+        }
+      }
+      // 3. Purge demo upcoming models
+      const uSnap = await getDocs(collection(db, 'upcomingModels'));
+      for (const d of uSnap.docs) {
+        if (isDemoUpcomingId(d.id) || (d.data() && isDemoUpcomingId(d.data().slug))) {
+          await deleteDoc(d.ref).catch(() => {});
+        }
+      }
+      // 4. Purge demo reviews
+      const revSnap = await getDocs(collection(db, 'customerReviews'));
+      for (const d of revSnap.docs) {
+        if (isDemoReviewId(d.id)) {
+          await deleteDoc(d.ref).catch(() => {});
+        }
+      }
+    } catch (err) {
+      console.warn('Firestore: purgeCloudDemoData note:', err);
     }
   }
 

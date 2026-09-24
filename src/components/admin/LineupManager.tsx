@@ -149,9 +149,13 @@ export const LineupManager: React.FC<LineupManagerProps> = ({
     setTimeout(() => setSavedSuccess(false), 3000);
   };
 
-  // Quick reset to default Apple Lineup
+  // Quick reset to default Lineup
   const handleResetDefaults = () => {
-    if (window.confirm('Reset lineup showcase to official Apple default models (iPhone 16 Pro Max Hero + 16 Pro, 16, 15, 14)?')) {
+    if (products.length === 0) {
+      alert('No products in the catalog yet. Please add real store products in the inventory tab first.');
+      return;
+    }
+    if (window.confirm('Reset lineup showcase to default catalog models?')) {
       const apple16ProMax = products.find(p => p.id === 'apple-iphone-16-pro-max' || p.name.includes('16 Pro Max')) || products[0];
       const defaultLineup = products
         .filter(p => (p.brand === 'Apple' || p.category === 'iPhone') && p.id !== apple16ProMax?.id)
@@ -361,6 +365,19 @@ export const LineupManager: React.FC<LineupManagerProps> = ({
           >
             <X className="w-4 h-4" />
           </button>
+        </div>
+      )}
+
+      {/* Empty Catalog Notice */}
+      {products.length === 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex items-start space-x-3.5">
+          <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-xs text-amber-900 space-y-1">
+            <h4 className="font-bold text-sm text-amber-950">Store Catalog Currently Empty (Zero Demo Products)</h4>
+            <p className="text-amber-800">
+              All demo products have been deleted. To feature devices in this homepage showcase banner, please add your real products under the <strong>Store Inventory &amp; Phones</strong> tab first.
+            </p>
+          </div>
         </div>
       )}
 

@@ -157,21 +157,21 @@ export const App: React.FC = () => {
     }).catch(() => {});
 
     const unsubProd = FirestoreService.subscribeProducts((cloudProducts) => {
-      if (cloudProducts && cloudProducts.length > 0) {
+      if (Array.isArray(cloudProducts)) {
         DataStorageService.saveProducts(cloudProducts);
         setProducts(cloudProducts);
       }
     });
 
     const unsubRate = FirestoreService.subscribeRateList((cloudRates) => {
-      if (cloudRates && cloudRates.length > 0) {
+      if (Array.isArray(cloudRates)) {
         DataStorageService.saveRateList(cloudRates);
         setRateList(cloudRates);
       }
     });
 
     const unsubUp = FirestoreService.subscribeUpcomingModels((cloudModels) => {
-      if (cloudModels && cloudModels.length > 0) {
+      if (Array.isArray(cloudModels)) {
         DataStorageService.saveUpcomingModels(cloudModels);
       }
     });

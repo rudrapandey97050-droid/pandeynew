@@ -200,13 +200,18 @@ export const PriceListModal: React.FC<PriceListModalProps> = ({
 
         {/* Table View */}
         <div className="p-4 overflow-y-auto flex-1">
-          {filtered.length === 0 ? (
+          {activeRateList.length === 0 ? (
+            <div className="text-center py-12 space-y-2">
+              <p className="text-sm font-bold text-slate-800">No price rates currently published.</p>
+              <p className="text-xs text-slate-500">Live rate items can be added directly via the Admin Panel under Rate List Management.</p>
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="text-center py-12 space-y-2">
               <p className="text-sm font-bold text-slate-700">No items match your selected filters or search.</p>
               <button
                 type="button"
                 onClick={() => { setSearch(''); setSelectedCategory('All'); setSelectedCondition('All'); }}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold"
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-bold cursor-pointer"
               >
                 Reset Filters
               </button>

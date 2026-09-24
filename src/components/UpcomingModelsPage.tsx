@@ -416,7 +416,18 @@ export const UpcomingModelsPage: React.FC<UpcomingModelsPageProps> = ({
             </div>
 
             {/* Grid of Models */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 pt-4">
+            {models.length === 0 ? (
+              <div className="bg-slate-800/50 border border-slate-700 rounded-3xl p-12 text-center max-w-lg mx-auto space-y-4 my-6">
+                <div className="w-14 h-14 bg-indigo-500/10 text-indigo-400 rounded-2xl flex items-center justify-center mx-auto">
+                  <Sparkles className="w-7 h-7" />
+                </div>
+                <h3 className="text-lg font-bold text-white">No Upcoming Models Listed</h3>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  There are currently no upcoming flagship phones announced for pre-booking. Stay tuned or check back soon as new device launches are announced by official distributors!
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 pt-4">
               {models.map(model => (
                 <div
                   key={model.id}
@@ -509,6 +520,7 @@ export const UpcomingModelsPage: React.FC<UpcomingModelsPageProps> = ({
                 </div>
               ))}
             </div>
+            )}
 
             {/* Bottom Store Info Banner */}
             <div className="mt-12 bg-slate-800/40 border border-slate-800 rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6">

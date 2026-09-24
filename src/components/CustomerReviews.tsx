@@ -52,7 +52,7 @@ export const CustomerReviews: React.FC<CustomerReviewsProps> = ({
 
     // 2. Real-time Firebase cloud subscription
     const unsubscribeFirestore = FirestoreService.subscribeCustomerReviews((cloudReviews) => {
-      if (cloudReviews && cloudReviews.length > 0) {
+      if (Array.isArray(cloudReviews)) {
         DataStorageService.saveCustomerReviews(cloudReviews);
         setReviews(cloudReviews);
       }

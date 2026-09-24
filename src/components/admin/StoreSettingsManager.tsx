@@ -33,11 +33,13 @@ import {
   Cloud,
   UploadCloud,
   DownloadCloud,
-  Printer
+  Printer,
+  HardDrive
 } from 'lucide-react';
 import { StoreSettings, FullAppBackupData, RestoreResult } from '../../types.ts';
 import { DataStorageService } from '../../services/dataStorage.ts';
 import { SecurityPinManager } from './SecurityPinManager.tsx';
+import { GoogleDriveBackupManager } from './GoogleDriveBackupManager.tsx';
 import { FirestoreService } from '../../services/firestoreService.ts';
 import { firebaseConfig } from '../../lib/firebase.ts';
 import { BillPrintSetupModal } from '../accounting/BillPrintSetupModal.tsx';
@@ -221,16 +223,27 @@ export const StoreSettingsManager: React.FC<StoreSettingsManagerProps> = ({
     }
   };
 
-  // 5. FACTORY RESET
+  // 5. WIPE ALL DEMO DATA
+  const handleWipeDemoData = () => {
+    if (!window.confirm('⚠️ Ke tapai website bata sabai demo data (products, rate list, upcoming models, reviews) hatayera purai clean banauna chahanuhunchha? Demo data visitor ra admin kasailai pani dekhine chhaina.')) {
+      return;
+    }
+    const res = DataStorageService.clearAllDemoData();
+    setFormData(DataStorageService.getStoreSettings());
+    onSettingsChange();
+    alert(`✅ Clean Slate Applied! Sabai demo data safalta-purwak hatayo:\n• Demo Products: ${res.products}\n• Demo Rate List: ${res.rates}\n• Demo Upcoming Models: ${res.upcoming}\n• Demo Reviews: ${res.reviews}\n\nAba website ma kunai pani demo data dekhine chhaina.`);
+  };
+
+  // 6. FACTORY RESET
   const handleFactoryReset = () => {
-    if (!window.confirm('⚠️ WARNING: This will reset ALL products, rates, valuations, repair bookings, and settings to the original default seed data. Proceed?')) {
+    if (!window.confirm('⚠️ WARNING: This will reset data to a fresh clean state. Proceed?')) {
       return;
     }
     DataStorageService.resetAllDataToFactoryDefaults();
     setFormData(DataStorageService.getStoreSettings());
     onSettingsChange();
     setShowFactoryResetConfirm(false);
-    alert('✅ Pandey Mobile Store data has been reset to factory defaults.');
+    alert('✅ Pandey Mobile Store data has been reset to clean defaults.');
   };
 
   return (
@@ -269,8 +282,8 @@ export const StoreSettingsManager: React.FC<StoreSettingsManagerProps> = ({
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <Cloud className="w-3.5 h-3.5" />
-            <span>Firebase Cloud DB</span>
+            <HardDrive className="w-3.5 h-3.5" />
+            <span>Google Drive Cloud Backup</span>
           </button>
           <button
             onClick={() => setActiveSection('backup-restore')}
@@ -575,141 +588,10 @@ export const StoreSettingsManager: React.FC<StoreSettingsManagerProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* SECTION: FIREBASE CLOUD DATABASE (FIRESTORE) */}
+      {/* SECTION: GOOGLE DRIVE WEBSITE BACKUP & RECOVERY */}
       {/* ========================================================================= */}
       {activeSection === 'firebase' && (
-        <div className="space-y-6">
-          {/* Header Card */}
-          <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950 text-white rounded-2xl p-6 shadow-md border border-slate-800">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
-              <div className="space-y-1">
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-emerald-400 bg-emerald-950/80 px-2.5 py-1 rounded-md border border-emerald-800/60 inline-flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  Firebase Firestore Cloud Database
-                </span>
-                <h3 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-                  <Cloud className="w-5 h-5 text-emerald-400" />
-                  Google Firebase Cloud Synchronization
-                </h3>
-                <p className="text-xs text-slate-300 max-w-xl">
-                  Your store is securely connected to Google Firebase Cloud Firestore. All product catalogs, valuations, service bookings, and settings sync across devices in real time.
-                </p>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={handlePushToCloud}
-                  disabled={isPushingCloud || isPullingCloud}
-                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-600/30 flex items-center space-x-2 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
-                >
-                  <UploadCloud className={`w-4 h-4 ${isPushingCloud ? 'animate-bounce' : ''}`} />
-                  <span>{isPushingCloud ? 'Pushing to Cloud...' : 'Push All Data to Cloud'}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={handlePullFromCloud}
-                  disabled={isPushingCloud || isPullingCloud}
-                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold rounded-xl border border-slate-700 flex items-center space-x-2 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
-                >
-                  <DownloadCloud className={`w-4 h-4 ${isPullingCloud ? 'animate-bounce' : ''}`} />
-                  <span>{isPullingCloud ? 'Pulling from Cloud...' : 'Pull Data from Cloud'}</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Status Alert Banner */}
-            {cloudStatusMsg && (
-              <div className="mt-4 p-3 bg-emerald-900/60 border border-emerald-500/50 rounded-xl text-xs font-semibold text-emerald-200 flex items-center justify-between">
-                <span>{cloudStatusMsg}</span>
-                <button
-                  type="button"
-                  onClick={() => setCloudStatusMsg(null)}
-                  className="text-emerald-400 hover:text-white font-bold ml-2 cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-            )}
-
-            {/* Project Parameters Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 mt-2">
-              <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Storage Engine</span>
-                <p className="text-xs font-mono font-bold text-emerald-400 truncate mt-1">
-                  {firebaseConfig.projectId || 'Local Storage (Unlocked)'}
-                </p>
-              </div>
-              <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Persistence</span>
-                <p className="text-xs font-mono font-bold text-white truncate mt-1">
-                  Live Cloud Memory / Direct
-                </p>
-              </div>
-              <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Database Mode</span>
-                <p className="text-xs font-semibold text-emerald-400 truncate mt-1">
-                  Live Real-Time Online
-                </p>
-              </div>
-              <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Status</span>
-                <p className="text-xs font-bold text-emerald-400 flex items-center gap-1.5 mt-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                  Online & Connected
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Sync Information & Collections Breakdown */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
-              <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <UploadCloud className="w-4 h-4 text-emerald-600" />
-                Automatic Real-time Sync
-              </h4>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                When products, rates, valuations, repair bookings, or reviews are submitted on your store, they are instantly synchronized directly with Google Firebase Firestore in real-time.
-              </p>
-              <ul className="text-xs text-slate-600 space-y-1.5 list-disc list-inside">
-                <li><strong className="text-slate-800">Fresh on refresh:</strong> No stale offline cache; browsers load live cloud data immediately.</li>
-                <li><strong className="text-slate-800">Multi-device sync:</strong> Changes on admin devices update client screens in real-time.</li>
-                <li><strong className="text-slate-800">Direct connection:</strong> Memory-based caching ensures the latest inventory is always served.</li>
-              </ul>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-3">
-              <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Database className="w-4 h-4 text-indigo-600" />
-                Cloud Collections Monitored
-              </h4>
-              <div className="divide-y divide-slate-100 text-xs">
-                <div className="py-1.5 flex justify-between">
-                  <span className="font-mono text-slate-700">products</span>
-                  <span className="font-semibold text-slate-900">{DataStorageService.getProducts().length} items</span>
-                </div>
-                <div className="py-1.5 flex justify-between">
-                  <span className="font-mono text-slate-700">valuations</span>
-                  <span className="font-semibold text-slate-900">{DataStorageService.getValuations().length} requests</span>
-                </div>
-                <div className="py-1.5 flex justify-between">
-                  <span className="font-mono text-slate-700">repairs</span>
-                  <span className="font-semibold text-slate-900">{DataStorageService.getRepairBookings().length} appointments</span>
-                </div>
-                <div className="py-1.5 flex justify-between">
-                  <span className="font-mono text-slate-700">preBookings</span>
-                  <span className="font-semibold text-slate-900">{DataStorageService.getPreBookings().length} pre-orders</span>
-                </div>
-                <div className="py-1.5 flex justify-between">
-                  <span className="font-mono text-slate-700">storeSettings</span>
-                  <span className="font-semibold text-emerald-600">Synced</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <GoogleDriveBackupManager onDataRefresh={onSettingsChange} />
       )}
 
       {/* ========================================================================= */}
@@ -736,6 +618,16 @@ export const StoreSettingsManager: React.FC<StoreSettingsManagerProps> = ({
 
               {/* Action Buttons: 1-Click Download & Copy */}
               <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setActiveSection('firebase')}
+                  className="px-4 py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-emerald-600/30 flex items-center space-x-2 transition-all active:scale-95 cursor-pointer"
+                  title="Open Google Drive Cloud Backup"
+                >
+                  <HardDrive className="w-4 h-4" />
+                  <span>Google Drive Cloud Backup</span>
+                </button>
+
                 <button
                   onClick={handleOneClickDownloadBackup}
                   disabled={isExporting}
@@ -1009,6 +901,27 @@ export const StoreSettingsManager: React.FC<StoreSettingsManagerProps> = ({
           {/* DANGER ZONE & CATALOG CLEANUP */}
           {/* ========================================================================= */}
           <div className="space-y-3">
+            {/* Wipe All Demo Data from Website */}
+            <div className="bg-red-500/10 rounded-2xl border-2 border-red-500/40 p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <h4 className="text-sm font-black text-red-950 flex items-center space-x-2">
+                  <Trash2 className="w-4 h-4 text-red-600 shrink-0" />
+                  <span>सबै डेमो डाटा हटाउनुहोस् (Wipe All Demo Data from Entire Website)</span>
+                </h4>
+                <p className="text-xs text-red-850 max-w-xl leading-relaxed">
+                  वेबसाइटबाट सबै डेमो उत्पादनहरू (Products), डेमो मूल्य सूची (Rates), डेमो आगामी फोनहरू (Upcoming models), र डेमो ग्राहक समीक्षाहरू (Reviews) एकै क्लिकमा स्थायी रूपमा हटाउँछ। भिजिटर र एडमिन दुवैका लागि कुनै पनि डेमो डाटा देखिने छैन।
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleWipeDemoData}
+                className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-black rounded-xl shadow-md transition cursor-pointer shrink-0 whitespace-nowrap active:scale-95"
+              >
+                सबै डेमो डाटा हटाउनुहोस्
+              </button>
+            </div>
+
             {/* Clean Demo Products */}
             <div className="bg-amber-50/70 rounded-2xl border border-amber-200 p-5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="space-y-0.5">

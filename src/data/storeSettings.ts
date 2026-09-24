@@ -23,13 +23,8 @@ export const initialStoreSettings: StoreSettings = {
   showLineupBanner: true,
   lineupTitle: "Explore the iPhone Lineup",
   lineupSubtitle: "Brand new seal pack with 1-Year Apple Nepal Warranty & certified pre-owned phones with testing guarantee. Available at Pandey Mobile, Butwal.",
-  lineupHeroProductId: "apple-iphone-16-pro-max",
-  lineupProductIds: [
-    "apple-iphone-16-pro",
-    "apple-iphone-16",
-    "apple-iphone-15",
-    "apple-iphone-14"
-  ],
+  lineupHeroProductId: undefined,
+  lineupProductIds: [],
   // QR Payment & Storefront Display
   paymentQRs: initialPaymentQRs,
   showPaymentQRsInFooter: true,
