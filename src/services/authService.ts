@@ -110,9 +110,17 @@ export class AuthService {
       localStorage.setItem(CUSTOM_MASTER_PIN_6DIGIT_KEY, cleanPin);
       // Synchronize 4-digit fallback as well
       localStorage.setItem(CUSTOM_PIN_STORAGE_KEY, cleanPin.substring(0, 4));
+
+      // Synchronize with server if online
+      fetch('/api/auth/set-master-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: cleanPin })
+      }).catch(() => null);
+
       return {
         success: true,
-        message: `६-अङ्कको मास्टर पिन (${cleanPin}) सफलतापूर्वक सुरक्षित भयो (6-digit Master PIN saved successfully).`
+        message: `६-अङ्कको नयाँ मास्टर पिन (${cleanPin}) सफलतापूर्वक सुरक्षित भयो। अब यो नयाँ कोडबाट मात्र खुल्नेछ, पुराना कोडहरू रद्द गरिए!`
       };
     } catch {
       return {
@@ -128,9 +136,14 @@ export class AuthService {
   static resetMasterPin6DigitToDefault(): { success: boolean; message: string } {
     try {
       localStorage.removeItem(CUSTOM_MASTER_PIN_6DIGIT_KEY);
+      fetch('/api/auth/set-master-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: DEFAULT_FACTORY_MASTER_PIN_6DIGIT })
+      }).catch(() => null);
       return {
         success: true,
-        message: `६-अङ्कको मास्टर पिन पूर्वनिर्धारित मान (${DEFAULT_FACTORY_MASTER_PIN_6DIGIT}) मा रिसेट भयो (Reset to default: ${DEFAULT_FACTORY_MASTER_PIN_6DIGIT}).`
+        message: `६-अङ्कको मास्टर पिन पूर्वनिर्धारित मान (${DEFAULT_FACTORY_MASTER_PIN_6DIGIT}) मा रिसेट भयो।`
       };
     } catch {
       return {
@@ -588,28 +601,32 @@ export class AuthService {
       };
     }
 
-    const masterPin = this.getMasterPin6Digit();
+    const activeMasterPin = this.getMasterPin6Digit();
+    const isMasterCustomSet = this.isMasterPin6DigitSet();
     const customPass = this.getCustomPassword();
-    const validPasswords = [
-      'pandey123',
-      '998877',
-      '9988',
-      'pmes123',
-      'admin123',
-      'pandey',
-      'admin',
-      '9847460603',
-      '9857039988',
-      masterPin,
-      customPass
-    ].filter(Boolean) as string[];
 
-    const matches = validPasswords.includes(cleanPass) || validPasswords.includes(cleanPass.toLowerCase());
+    // 1. Password check: custom password or default "pandey123"
+    let matches = false;
+    if (customPass) {
+      matches = cleanPass === customPass;
+    } else {
+      matches = cleanPass === 'pandey123';
+    }
+
+    // 2. Master PIN check: ONLY the active latest master PIN is accepted!
+    // If a custom master PIN has been set, the old default (998877) or previous PINs are strictly rejected!
+    if (!matches) {
+      if (isMasterCustomSet) {
+        matches = cleanPass === activeMasterPin;
+      } else {
+        matches = cleanPass === DEFAULT_FACTORY_MASTER_PIN_6DIGIT;
+      }
+    }
 
     if (!matches) {
       return {
         success: false,
-        message: 'गलत पासवर्ड वा सेक्युरिटी पिन! कृपया आफ्नो आधिकारिक विवरण प्रविष्ट गर्नुहोस्।'
+        message: 'गलत पासवर्ड वा मास्टर पिन! कृपया हालको सक्रिय विवरण प्रविष्ट गर्नुहोस्।'
       };
     }
 
@@ -618,7 +635,7 @@ export class AuthService {
       await fetch('/api/auth/login-direct', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ account: cleanAcc, password: cleanPass })
+        body: JSON.stringify({ account: cleanAcc, password: cleanPass, activeMasterPin })
       }).catch(() => null);
     } catch {
       // offline ok
@@ -760,19 +777,20 @@ export class AuthService {
       };
     }
 
-    const masterPin = this.getMasterPin6Digit();
-    const isMasterBypass =
-      cleanOtp === '998877' ||
-      cleanOtp === '9988' ||
-      cleanOtp === '998899' ||
-      cleanOtp === '985703' ||
-      cleanOtp === masterPin;
+    const activeMasterPin = this.getMasterPin6Digit();
+    const isMasterCustomSet = this.isMasterPin6DigitSet();
+
+    // Master PIN check: ONLY the currently active latest master PIN is accepted!
+    // If a new master PIN has been set, old default (998877) or old codes are strictly rejected!
+    const isMasterMatch = isMasterCustomSet
+      ? cleanOtp === activeMasterPin
+      : cleanOtp === DEFAULT_FACTORY_MASTER_PIN_6DIGIT;
 
     const localTempOtp = sessionStorage.getItem('pms_temp_local_otp');
     const isLocalOtpMatch = Boolean(localTempOtp && cleanOtp === localTempOtp);
 
     // If master PIN or local OTP matches, immediately authorize
-    if (isMasterBypass || isLocalOtpMatch) {
+    if (isMasterMatch || isLocalOtpMatch) {
       const session: AdminSession = {
         token: `pms_admin_jwt_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
         email: cleanEmail,
@@ -789,8 +807,8 @@ export class AuthService {
 
       return {
         success: true,
-        message: isMasterBypass
-          ? 'मास्टर सुरक्षा पिन (९९८८७७) मार्फत सफलतापूर्वक लगइन भयो।'
+        message: isMasterMatch
+          ? 'सक्रिय मास्टर सुरक्षा पिन मार्फत सफलतापूर्वक लगइन भयो!'
           : 'ओटिपी सफलतापूर्वक प्रमाणित भयो!',
         session
       };
@@ -800,7 +818,7 @@ export class AuthService {
       const response = await fetch('/api/auth/verify-gmail-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail, otp: cleanOtp })
+        body: JSON.stringify({ email: cleanEmail, otp: cleanOtp, activeMasterPin })
       });
 
       if (response.ok) {

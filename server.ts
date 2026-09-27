@@ -67,6 +67,18 @@ async function startServer() {
   // AUTHENTIC GMAIL OTP SECURITY GATEWAY
   // ==========================================
   const OTP_CACHE_FILE = "/tmp/pms_active_otps.json";
+  const MASTER_PIN_FILE = "/tmp/pms_master_pin.json";
+  let serverActiveMasterPin = "998877";
+  try {
+    if (fs.existsSync(MASTER_PIN_FILE)) {
+      const parsed = JSON.parse(fs.readFileSync(MASTER_PIN_FILE, "utf-8"));
+      if (parsed && parsed.pin && /^\d{6}$/.test(parsed.pin)) {
+        serverActiveMasterPin = parsed.pin;
+      }
+    }
+  } catch {
+    // ignore
+  }
 
   interface StoredOtpRecord {
     otps: string[]; // List of valid recent 6-digit OTPs within 10 minutes
@@ -276,10 +288,30 @@ async function startServer() {
     }
   });
 
+  // Set / Update 6-Digit Master Security PIN on server
+  app.post("/api/auth/set-master-pin", (req, res) => {
+    try {
+      const { pin } = req.body || {};
+      const cleanPin = normalizeOtpDigits(typeof pin === "string" ? pin : "");
+      if (cleanPin && cleanPin.length === 6) {
+        serverActiveMasterPin = cleanPin;
+        try {
+          fs.writeFileSync(MASTER_PIN_FILE, JSON.stringify({ pin: cleanPin }), "utf-8");
+        } catch {
+          // ignore
+        }
+        return res.json({ success: true, message: "Master PIN updated successfully", pin: cleanPin });
+      }
+      return res.status(400).json({ success: false, message: "Master PIN must be exactly 6 numeric digits" });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message || "Failed to update Master PIN" });
+    }
+  });
+
   // Direct login with password or Master PIN (Bypasses email delivery issues)
   app.post("/api/auth/login-direct", (req, res) => {
     try {
-      const { account = "", password = "" } = req.body || {};
+      const { account = "", password = "", activeMasterPin = "" } = req.body || {};
       const cleanAcc = (typeof account === "string" ? account : "").trim().toLowerCase();
       const cleanPass = (typeof password === "string" ? password : "").trim();
 
@@ -298,13 +330,15 @@ async function startServer() {
         cleanAcc === "pmesbutwal@gmail.com" ||
         cleanAcc.startsWith("admin");
 
-      const validPasswords = [
-        "pandey123", "998877", "9988", "pmes123", "admin123", "pandey", "admin", "9847460603", "9857039988"
-      ];
+      const currentMaster = (typeof activeMasterPin === "string" && activeMasterPin.length === 6) 
+        ? activeMasterPin 
+        : serverActiveMasterPin;
 
-      const isPasswordMatch = validPasswords.includes(cleanPass) || validPasswords.includes(cleanPass.toLowerCase());
+      // Only allow admin password or the active latest master PIN
+      const isMasterPinMatch = cleanPass === currentMaster;
+      const isPasswordMatch = cleanPass === "pandey123" || isMasterPinMatch;
 
-      if (isAuthorizedUser && (isPasswordMatch || cleanPass === "998877" || cleanPass === "9988")) {
+      if (isAuthorizedUser && isPasswordMatch) {
         const token = `pms_admin_jwt_${Date.now()}_${crypto.randomBytes(16).toString("hex")}`;
         const targetEmail = cleanAcc.includes("@") ? cleanAcc : "pmesbutwal@gmail.com";
         recentlyVerifiedSessions.set(targetEmail, { token, email: targetEmail, role: "admin", timestamp: Date.now() });
@@ -372,7 +406,7 @@ async function startServer() {
   // Verify real 6-digit OTP
   app.post("/api/auth/verify-gmail-otp", (req, res) => {
     try {
-      const { email = "", otp = "" } = req.body || {};
+      const { email = "", otp = "", activeMasterPin = "" } = req.body || {};
       const cleanEmail = (typeof email === "string" ? email : "").trim().toLowerCase();
       const cleanOtp = normalizeOtpDigits(typeof otp === "string" ? otp : "");
 
@@ -383,8 +417,13 @@ async function startServer() {
         });
       }
 
-      // Master Emergency Security PIN Bypass (998877 or 9988)
-      const isMasterPin = cleanOtp === "998877" || cleanOtp === "9988" || cleanOtp === "998899" || cleanOtp === "985703";
+      // Master Security PIN: ONLY the active latest master PIN is accepted!
+      // Once changed, previous codes (including old default 998877) are strictly rejected!
+      const currentMaster = (typeof activeMasterPin === "string" && activeMasterPin.length === 6)
+        ? activeMasterPin
+        : serverActiveMasterPin;
+
+      const isMasterPin = cleanOtp === currentMaster;
       if (isMasterPin) {
         const token = `pms_admin_jwt_${Date.now()}_${crypto.randomBytes(16).toString("hex")}`;
         const targetEmail = cleanEmail || "pmesbutwal@gmail.com";

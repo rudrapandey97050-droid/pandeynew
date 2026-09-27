@@ -22,18 +22,18 @@ interface SecurityPinManagerProps {
 
 export const SecurityPinManager: React.FC<SecurityPinManagerProps> = ({ onPinChanged }) => {
   // 6-Digit Master PIN state
-  const [currentMasterPin6, setCurrentMasterPin6] = useState<string>('998877');
+  const [currentMasterPin6, setCurrentMasterPin6] = useState<string>(() => AuthService.getMasterPin6Digit());
   const [showMasterPin6, setShowMasterPin6] = useState<boolean>(false);
-  const [isMasterPin6CustomSet, setIsMasterPin6CustomSet] = useState<boolean>(false);
+  const [isMasterPin6CustomSet, setIsMasterPin6CustomSet] = useState<boolean>(() => AuthService.isMasterPin6DigitSet());
   const [newMasterPin6, setNewMasterPin6] = useState<string>('');
   const [confirmMasterPin6, setConfirmMasterPin6] = useState<string>('');
   const [masterPin6Message, setMasterPin6Message] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showMasterResetConfirm, setShowMasterResetConfirm] = useState<boolean>(false);
 
   // Legacy 4-Digit PIN state
-  const [currentPin, setCurrentPin] = useState<string>('9988');
+  const [currentPin, setCurrentPin] = useState<string>(() => AuthService.getCustomPin());
   const [showCurrentPin, setShowCurrentPin] = useState<boolean>(false);
-  const [isCustomSet, setIsCustomSet] = useState<boolean>(false);
+  const [isCustomSet, setIsCustomSet] = useState<boolean>(() => AuthService.isCustomPinSet());
 
   // New PIN form
   const [newPin, setNewPin] = useState<string>('');
@@ -198,14 +198,17 @@ export const SecurityPinManager: React.FC<SecurityPinManagerProps> = ({ onPinCha
   const handleTestPinChange = (val: string) => {
     const cleaned = val.replace(/\D/g, '').slice(0, 6);
     setTestPin(cleaned);
+    const latestMaster = AuthService.getMasterPin6Digit();
+    const latestPin = AuthService.getCustomPin();
     if (cleaned.length === 6) {
-      if (cleaned === currentMasterPin6 || cleaned === '998877' || cleaned === '123456') {
+      // ONLY the active latest master PIN is valid!
+      if (cleaned === latestMaster) {
         setTestResult('success');
       } else {
         setTestResult('failed');
       }
     } else if (cleaned.length === 4) {
-      if (cleaned === currentPin || cleaned === '9988' || cleaned === '1234') {
+      if (cleaned === latestPin) {
         setTestResult('success');
       } else {
         setTestResult('failed');
