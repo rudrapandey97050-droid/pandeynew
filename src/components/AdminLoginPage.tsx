@@ -40,7 +40,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loginMethod, setLoginMethod] = useState<'authorized_mail' | 'instant' | 'direct_otp'>('authorized_mail');
-  const [authorizedEmailInput, setAuthorizedEmailInput] = useState('pmesbutwal@gmail.com');
+  const [authorizedEmailInput, setAuthorizedEmailInput] = useState('');
 
   // Step 2: OTP State
   const [targetEmail, setTargetEmail] = useState('');
@@ -617,7 +617,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
                               setAuthorizedEmailInput(e.target.value);
                               if (errorMessage) setErrorMessage('');
                             }}
-                            placeholder="pmesbutwal@gmail.com"
+                            placeholder="आफ्नो अधिकृत जिमेल प्रविष्ट गर्नुहोस्"
                             required
                             className="w-full pl-9 pr-3.5 py-2.5 text-xs sm:text-sm text-slate-900 bg-white border border-slate-300 rounded-lg placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-colors font-mono"
                           />
@@ -806,7 +806,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
                 <div className="mb-4 p-3 rounded-lg bg-slate-50 border border-slate-200/80 text-xs">
                   <div className="text-slate-500 text-[11px]">कोड पठाइएको इमेल:</div>
                   <div className="font-semibold text-slate-800 mt-0.5">
-                    {targetEmail || 'pmesbutwal@gmail.com'}
+                    {targetEmail || 'अधिकृत जिमेल'}
                   </div>
                 </div>
 
