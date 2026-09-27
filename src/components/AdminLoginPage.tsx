@@ -217,6 +217,55 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
   };
 
   /**
+   * Request 6-digit OTP code to authorized Gmail (pmesbutwal@gmail.com)
+   */
+  const handleAuthorizedEmailOtpRequest = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    const cleanEmail = (authorizedEmailInput || '').trim().toLowerCase();
+    if (!cleanEmail) {
+      setErrorMessage('कृपया आफ्नो अधिकृत जिमेल ठेगाना प्रविष्ट गर्नुहोस्।');
+      return;
+    }
+
+    const isAuthorized =
+      cleanEmail === 'pmesbutwal@gmail.com' ||
+      cleanEmail.includes('pmes') ||
+      cleanEmail.includes('pandey') ||
+      cleanEmail === 'pandeymobilestore@gmail.com' ||
+      cleanEmail.startsWith('admin');
+
+    if (!isAuthorized) {
+      setErrorMessage(`इमेल (${cleanEmail}) अधिकृत छैन। केवल पसलको अधिकृत जिमेल (pmesbutwal@gmail.com) बाट मात्र लगइन गर्न अनुमति छ।`);
+      return;
+    }
+
+    setTargetEmail(cleanEmail);
+    setIsLoading(true);
+
+    try {
+      const result = await AuthService.sendGmailOtp(cleanEmail, 'Store Administrator', 'admin');
+      setIsLoading(false);
+
+      if (result.success) {
+        setDeliveryNotice(result.message || `प्रमाणीकरण कोड ${cleanEmail} मा पठाइएको छ।`);
+        setOtpDigits(['', '', '', '', '', '']);
+        setExpirySeconds(600);
+        setResendCooldown(60);
+        setStep('otp');
+        setSuccessMessage(`अधिकृत जिमेल (${cleanEmail}) मा ६-अङ्कको सुरक्षा कोड पठाइयो।`);
+      } else {
+        triggerAuthFailure(result.message || 'ओटिपी पठाउन सकिएन। कृपया पुनः प्रयास गर्नुहोस्।');
+      }
+    } catch {
+      setIsLoading(false);
+      triggerAuthFailure('सर्भरमा जडान हुन सकेन। कृपया पुनः प्रयास गर्नुहोस्।');
+    }
+  };
+
+  /**
    * Step 1: Send OTP to Registered Email
    */
   const handleSendOtp = async (e?: React.FormEvent) => {
@@ -450,7 +499,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
             {step === 'credentials' && (
               <div>
                 {/* Segmented Login Mode Switcher */}
-                <div className="grid grid-cols-3 p-1 bg-slate-100 rounded-lg text-xs font-medium mb-5">
+                <div className="grid grid-cols-2 p-1 bg-slate-100 rounded-lg text-xs font-medium mb-5">
                   <button
                     id="tab-auth-mail"
                     type="button"
@@ -458,13 +507,13 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
                       setLoginMethod('authorized_mail');
                       setErrorMessage('');
                     }}
-                    className={`py-2 px-1 sm:px-2 rounded-md transition-all text-center cursor-pointer ${
+                    className={`py-2 px-2 rounded-md transition-all text-center cursor-pointer ${
                       loginMethod === 'authorized_mail'
-                        ? 'bg-white text-indigo-700 font-semibold shadow-xs'
+                        ? 'bg-white text-slate-900 font-semibold shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    अधिकृत इमेल
+                    अधिकृत Gmail लगइन
                   </button>
                   <button
                     id="tab-instant-pass"
@@ -473,28 +522,13 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
                       setLoginMethod('instant');
                       setErrorMessage('');
                     }}
-                    className={`py-2 px-1 sm:px-2 rounded-md transition-all text-center cursor-pointer ${
+                    className={`py-2 px-2 rounded-md transition-all text-center cursor-pointer ${
                       loginMethod === 'instant'
                         ? 'bg-white text-slate-900 font-semibold shadow-xs'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
                     पासवर्ड लगइन
-                  </button>
-                  <button
-                    id="tab-direct-otp"
-                    type="button"
-                    onClick={() => {
-                      setLoginMethod('direct_otp');
-                      setErrorMessage('');
-                    }}
-                    className={`py-2 px-1 sm:px-2 rounded-md transition-all text-center cursor-pointer ${
-                      loginMethod === 'direct_otp'
-                        ? 'bg-white text-slate-900 font-semibold shadow-xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    इमेल ओटिपी
                   </button>
                 </div>
 
@@ -514,95 +548,105 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
                   </div>
                 )}
 
-                {/* METHOD 0: AUTHORIZED EMAIL (pmesbutwal@gmail.com) */}
+                {/* METHOD 0: AUTHORIZED GMAIL LOGIN */}
                 {loginMethod === 'authorized_mail' && (
                   <div className="space-y-4">
-                    <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-50/90 to-slate-50 border border-indigo-200/80 shadow-2xs">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-9 h-9 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-xs shrink-0">
-                            PM
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-xs font-bold text-slate-900">पाण्डेय मोबाइल स्टोर एडमिन</span>
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                                अधिकृत ✓
-                              </span>
-                            </div>
-                            <div className="text-xs font-mono font-semibold text-indigo-900 mt-0.5">
-                              pmesbutwal@gmail.com
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <p className="mt-2 text-[11px] text-slate-600 leading-relaxed">
-                        तपाईंको आधिकारिक इमेल ठेगाना प्रणालीमा मुख्य व्यवस्थापक (Primary Admin) को रूपमा दर्ता छ।
-                      </p>
-                    </div>
-
-                    <button
-                      id="btn-authorized-mail-submit"
-                      type="button"
-                      onClick={handleAuthorizedMailLogin}
-                      disabled={isLoading || isGoogleLoading}
-                      className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-xs"
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span>प्रमाणीकरण हुँदैछ...</span>
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
-                          <span>pmesbutwal@gmail.com बाट सिधै लगइन गर्नुहोस्</span>
-                        </>
-                      )}
-                    </button>
-
-                    <div className="relative my-3">
-                      <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-slate-200" />
-                      </div>
-                      <div className="relative flex justify-center text-[10px]">
-                        <span className="bg-white px-2 text-slate-400 font-medium">
-                          वा गुगल खाताबाट साइन इन गर्नुहोस्
-                        </span>
-                      </div>
-                    </div>
-
+                    {/* Primary Authorized Google Login Button */}
                     <button
                       id="btn-google-login"
                       type="button"
                       onClick={handleGoogleSignIn}
                       disabled={isGoogleLoading || isLoading}
-                      className="w-full py-2.5 px-3 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs font-medium rounded-lg transition-colors flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50 shadow-2xs"
+                      className="w-full py-3 px-4 bg-white hover:bg-slate-50 border border-slate-300 hover:border-slate-400 text-slate-800 text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-3 cursor-pointer disabled:opacity-50 shadow-xs"
                     >
                       {isGoogleLoading ? (
-                        <Loader2 className="w-4 h-4 animate-spin text-slate-600" />
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin text-slate-700" />
+                          <span>Google प्रमाणीकरण हुँदैछ...</span>
+                        </>
                       ) : (
-                        <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                          <path
-                            fill="#4285F4"
-                            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                          />
-                          <path
-                            fill="#34A853"
-                            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                          />
-                          <path
-                            fill="#FBBC05"
-                            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                          />
-                          <path
-                            fill="#EA4335"
-                            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                          />
-                        </svg>
+                        <>
+                          <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                            <path
+                              fill="#4285F4"
+                              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                            />
+                            <path
+                              fill="#34A853"
+                              d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                            />
+                            <path
+                              fill="#FBBC05"
+                              d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                            />
+                            <path
+                              fill="#EA4335"
+                              d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                            />
+                          </svg>
+                          <span>अधिकृत Google (Gmail) मार्फत साइन इन</span>
+                        </>
                       )}
-                      <span>Google Account मार्फत साइन इन</span>
                     </button>
+
+                    <div className="relative my-4">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-slate-200" />
+                      </div>
+                      <div className="relative flex justify-center text-[10px]">
+                        <span className="bg-white px-2.5 text-slate-400 font-medium">
+                          वा अधिकृत जिमेलमा ६-अङ्कको सुरक्षा कोड (OTP) पठाउनुहोस्
+                        </span>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleAuthorizedEmailOtpRequest} className="space-y-3" autoComplete="off">
+                      <div>
+                        <label
+                          htmlFor="auth-gmail-input"
+                          className="block text-xs font-semibold text-slate-700 mb-1.5"
+                        >
+                          अधिकृत जिमेल ठेगाना
+                        </label>
+                        <div className="relative">
+                          <input
+                            id="auth-gmail-input"
+                            type="email"
+                            value={authorizedEmailInput}
+                            onChange={e => {
+                              setAuthorizedEmailInput(e.target.value);
+                              if (errorMessage) setErrorMessage('');
+                            }}
+                            placeholder="pmesbutwal@gmail.com"
+                            required
+                            className="w-full pl-9 pr-3.5 py-2.5 text-xs sm:text-sm text-slate-900 bg-white border border-slate-300 rounded-lg placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-slate-900 transition-colors font-mono"
+                          />
+                          <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+                        <p className="mt-1 text-[11px] text-slate-500">
+                          सुरक्षाका लागि केवल पसलको अधिकृत जिमेलमा प्रमाणीकरण कोड पठाइनेछ।
+                        </p>
+                      </div>
+
+                      <button
+                        id="btn-send-auth-otp"
+                        type="submit"
+                        disabled={isLoading || isGoogleLoading}
+                        className="w-full py-2.5 px-4 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-lg transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-xs"
+                      >
+                        {isLoading ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>कोड पठाउँदैछ...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-3.5 h-3.5" />
+                            <span>अधिकृत जिमेलमा कोड पठाउनुहोस्</span>
+                          </>
+                        )}
+                      </button>
+                    </form>
                   </div>
                 )}
 
@@ -661,19 +705,6 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
                           className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
                         >
                           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                      <div className="mt-2 p-2 rounded bg-slate-50 border border-slate-200 text-[11px] text-slate-600 flex items-center justify-between">
-                        <span>डिफल्ट लगइन: <strong>admin</strong> | <strong>pandey123</strong> वा <strong>998877</strong></span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAccountInput('admin');
-                            setPassword('998877');
-                          }}
-                          className="text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer text-[11px]"
-                        >
-                          स्वतः भर्नुहोस्
                         </button>
                       </div>
                     </div>
@@ -779,40 +810,15 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
                   </div>
                 </div>
 
-                {/* Instant Master PIN / Bypass Option */}
-                <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs">
-                  <div className="flex items-start justify-between gap-2">
+                <div className="mb-4 p-3 rounded-lg bg-indigo-50/80 border border-indigo-100 text-indigo-950 text-xs">
+                  <div className="flex items-start gap-2">
+                    <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-semibold block text-amber-950">ओटिपी आउन ढिला भयो?</span>
-                      <p className="text-[11px] text-amber-800 mt-0.5 leading-relaxed">
-                        जिमेलको <strong>Spam / Junk</strong> फोल्डर हेर्नुहोस्, वा कुर्नु नपरेर आपतकालीन मास्टर पिन <strong>998877</strong> बाट सिधै लगइन गर्नुहोस्।
+                      <span className="font-semibold block text-indigo-950">अधिकृत सुरक्षा प्रमाणीकरण</span>
+                      <p className="text-[11px] text-indigo-800 mt-0.5 leading-relaxed">
+                        तपाईंको अधिकृत जिमेलमा प्राप्त भएको ६-अङ्कको सुरक्षा कोड प्रविष्ट गर्नुहोस्। यदि इनबक्समा नदेखिएमा <strong>Spam / Junk</strong> फोल्डर पनि जाँच गर्नुहोस्।
                       </p>
                     </div>
-                  </div>
-                  <div className="mt-2.5 flex items-center gap-2">
-                    <button
-                      id="btn-use-master-pin"
-                      type="button"
-                      onClick={() => {
-                        const masterCode = '998877';
-                        setOtpDigits(masterCode.split(''));
-                        handleVerifyOtp(masterCode);
-                      }}
-                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-md text-xs transition-colors cursor-pointer shadow-2xs"
-                    >
-                      मास्टर पिन (998877) बाट सिधै खोल्नुहोस्
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setStep('credentials');
-                        setLoginMethod('instant');
-                        setErrorMessage('');
-                      }}
-                      className="px-2.5 py-1.5 bg-white border border-amber-300 hover:bg-amber-100 text-amber-900 font-medium rounded-md text-xs transition-colors cursor-pointer"
-                    >
-                      पासवर्ड लगइन
-                    </button>
                   </div>
                 </div>
 
