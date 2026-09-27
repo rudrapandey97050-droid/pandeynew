@@ -267,51 +267,87 @@ export const ProductSearchSelect: React.FC<ProductSearchSelectProps> = ({
                 const priceVal = p.discountPrice || p.price;
                 const isMatch = selectedProductId === p.id;
                 return (
-                  <button
+                  <div
                     key={p.id}
-                    type="button"
-                    onClick={() => handleSelect(p)}
-                    className={`w-full text-left p-2.5 hover:bg-indigo-50/60 transition-colors flex items-center justify-between group cursor-pointer ${
+                    className={`w-full text-left p-2.5 hover:bg-indigo-50/60 transition-colors border-b border-slate-100 last:border-b-0 ${
                       isMatch ? 'bg-indigo-50 border-l-2 border-indigo-600' : ''
                     }`}
                   >
-                    <div className="space-y-0.5 truncate pr-2">
-                      <div className="flex items-center space-x-1.5 truncate">
-                        <span className="text-[10px] font-bold px-1.5 py-0.2 bg-slate-100 text-slate-700 rounded uppercase">
-                          {p.brand}
-                        </span>
-                        <span className="font-bold text-slate-900 text-xs truncate group-hover:text-indigo-700">
-                          {p.name}
-                        </span>
+                    <button
+                      type="button"
+                      onClick={() => handleSelect(p)}
+                      className="w-full text-left flex items-center justify-between group cursor-pointer"
+                    >
+                      <div className="space-y-0.5 truncate pr-2">
+                        <div className="flex items-center space-x-1.5 truncate">
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 bg-slate-100 text-slate-700 rounded uppercase">
+                            {p.brand}
+                          </span>
+                          <span className="font-bold text-slate-900 text-xs truncate group-hover:text-indigo-700">
+                            {p.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-2 text-[10px] text-slate-500">
+                          {p.storage && (
+                            <span className="font-semibold text-slate-700 bg-slate-100 px-1 rounded">
+                              {p.storage}
+                            </span>
+                          )}
+                          {p.ram && (
+                            <span>{p.ram}</span>
+                          )}
+                          <span>•</span>
+                          <span className={Number(p.stock) > 0 ? 'text-emerald-600 font-bold' : 'text-slate-400'}>
+                            Stock: {p.stock || 0}
+                          </span>
+                          <span>•</span>
+                          <span className="text-slate-400">{p.condition}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center space-x-2 text-[10px] text-slate-500">
-                        {p.storage && (
-                          <span className="font-semibold text-slate-700 bg-slate-100 px-1 rounded">
-                            {p.storage}
+                      <div className="text-right shrink-0">
+                        <span className="font-mono font-bold text-slate-900 text-xs block">
+                          Rs.{priceVal.toLocaleString()}
+                        </span>
+                        {p.originalPrice && p.originalPrice > priceVal && (
+                          <span className="text-[10px] text-slate-400 line-through font-mono">
+                            Rs.{p.originalPrice.toLocaleString()}
                           </span>
                         )}
-                        {p.ram && (
-                          <span>{p.ram}</span>
-                        )}
-                        <span>•</span>
-                        <span className={Number(p.stock) > 0 ? 'text-emerald-600 font-bold' : 'text-slate-400'}>
-                          Stock: {p.stock || 0}
-                        </span>
-                        <span>•</span>
-                        <span className="text-slate-400">{p.condition}</span>
                       </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <span className="font-mono font-bold text-slate-900 text-xs block">
-                        Rs.{priceVal.toLocaleString()}
-                      </span>
-                      {p.originalPrice && p.originalPrice > priceVal && (
-                        <span className="text-[10px] text-slate-400 line-through font-mono">
-                          Rs.{p.originalPrice.toLocaleString()}
-                        </span>
-                      )}
-                    </div>
-                  </button>
+                    </button>
+
+                    {/* Available RAM & ROM Variants Quick Selection */}
+                    {p.variants && p.variants.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2 pt-1.5 border-t border-slate-100/80">
+                        <span className="text-[9px] font-bold text-purple-700">भेरियन्ट छनोट:</span>
+                        {p.variants.map((v, vIdx) => {
+                          const vLabel = v.ram ? `${v.ram}/${v.storage}` : v.storage;
+                          return (
+                            <button
+                              key={vIdx}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const customizedProd: Product = {
+                                  ...p,
+                                  name: `${p.name} (${vLabel})`,
+                                  storage: v.storage,
+                                  ram: v.ram || p.ram,
+                                  price: v.price,
+                                  discountPrice: v.price
+                                };
+                                handleSelect(customizedProd);
+                              }}
+                              className="text-[9px] font-bold px-2 py-0.5 rounded-md bg-purple-50 hover:bg-purple-600 hover:text-white text-purple-700 border border-purple-200 transition-all cursor-pointer shadow-2xs"
+                              title={`Select variant: ${vLabel} at Rs. ${v.price.toLocaleString()}`}
+                            >
+                              {vLabel} • Rs.{v.price.toLocaleString()}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 );
               })
             )}

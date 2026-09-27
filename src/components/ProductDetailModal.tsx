@@ -114,9 +114,12 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
       SeoService.setProductSeo(product);
 
       const initialVar = (product.variants && product.variants.length > 0)
-        ? (product.variants.find(v => v.storage === product.storage) || product.variants[0])
+        ? (product.variants.find(v => v.storage === product.storage && (!product.ram || v.ram === product.ram)) ||
+           product.variants.find(v => v.storage === product.storage) ||
+           product.variants[0])
         : {
             storage: product.storage || '128GB',
+            ram: product.ram,
             price: product.price,
             originalPrice: product.originalPrice,
             availability: product.availability || 'In Stock'
@@ -378,36 +381,38 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 </div>
               )}
 
-              {/* Storage Capacity Selector (Apple Style Cards) */}
+              {/* Storage Capacity & RAM Selector (Apple Style Cards) */}
               {variants.length > 1 && (
                 <div className="space-y-2.5">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-[#86868b] uppercase tracking-wider block">
-                      Storage Capacity (स्टोरेज क्षमता):
+                      RAM & ROM Variant (भेरियन्ट तथा दर):
                     </label>
-                    <span className="text-xs font-bold text-white">
-                      {selectedVariant.storage} {selectedVariant.ram ? `(${selectedVariant.ram} RAM)` : ''}
+                    <span className="text-xs font-bold text-indigo-300 bg-indigo-950/60 border border-indigo-500/30 px-2 py-0.5 rounded-md">
+                      {selectedVariant.ram ? `${selectedVariant.ram} RAM + ` : ''}{selectedVariant.storage}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                    {variants.map((variant) => {
-                      const isSelected = selectedVariant.storage === variant.storage;
+                    {variants.map((variant, vIdx) => {
+                      const isSelected = selectedVariant.storage === variant.storage && (selectedVariant.ram || '') === (variant.ram || '');
                       const isVariantOutOfStock = variant.availability === 'Out of Stock';
                       return (
                         <button
-                          key={variant.storage}
+                          key={`${variant.ram || ''}-${variant.storage}-${vIdx}`}
                           type="button"
                           onClick={() => setSelectedVariant(variant)}
                           className={`p-3 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden ${
                             isSelected
-                              ? 'border-indigo-400 bg-indigo-950/40 text-white ring-2 ring-indigo-500 shadow-md shadow-indigo-500/20'
+                              ? 'border-indigo-400 bg-indigo-950/50 text-white ring-2 ring-indigo-500 shadow-md shadow-indigo-500/30'
                               : 'border-white/15 bg-white/5 text-[#a1a1a6] hover:border-white/30 hover:text-white'
                           } ${isVariantOutOfStock ? 'opacity-60' : ''}`}
                         >
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-extrabold text-white">{variant.storage}</span>
+                            <span className="text-sm font-extrabold text-white">
+                              {variant.ram ? `${variant.ram}/${variant.storage}` : variant.storage}
+                            </span>
                             {variant.ram && (
-                              <span className="text-[10px] font-bold text-[#86868b]">{variant.ram}</span>
+                              <span className="text-[10px] font-bold text-indigo-400">RAM</span>
                             )}
                           </div>
                           <div className="text-xs font-bold text-indigo-300 mt-1">

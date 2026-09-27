@@ -18,6 +18,7 @@ import {
   Image as ImageIcon,
   Images,
   Layers,
+  Shield,
   ShieldCheck,
   RefreshCw,
   Sparkles,
@@ -128,40 +129,83 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
   const [colorImgUrlInput, setColorImgUrlInput] = useState('');
   const colorFileInputRef = useRef<HTMLInputElement>(null);
 
-  // GB Storage Variants state
+  // GB Storage & RAM Variants state
   const [variantsList, setVariantsList] = useState<ProductVariant[]>([]);
   const [enableVariants, setEnableVariants] = useState<boolean>(false);
+  const [builderRam, setBuilderRam] = useState<string>('8GB');
+  const [builderRom, setBuilderRom] = useState<string>('128GB');
+  const [builderPrice, setBuilderPrice] = useState<string>('');
+  const [builderOrigPrice, setBuilderOrigPrice] = useState<string>('');
 
-  // Add / manage GB variants helpers
-  const handleAddVariantPreset = (storagePreset: string) => {
+  // Add combo preset (e.g., RAM + ROM)
+  const handleAddComboPreset = (ramPreset: string, romPreset: string) => {
     setEnableVariants(true);
-    const exists = variantsList.some(v => v.storage.toLowerCase() === storagePreset.toLowerCase());
+    const cleanRam = ramPreset === 'None' || ramPreset === 'N/A' ? '' : ramPreset.trim();
+    const cleanRom = romPreset.trim();
+    const exists = variantsList.some(v => 
+      v.storage.toLowerCase() === cleanRom.toLowerCase() && 
+      (v.ram || '').toLowerCase() === cleanRam.toLowerCase()
+    );
     if (exists) return;
 
     const basePriceNum = parseFloat(price) || 0;
     const baseOrigPriceNum = originalPrice ? parseFloat(originalPrice) : undefined;
     const newVariant: ProductVariant = {
-      storage: storagePreset,
+      storage: cleanRom,
+      ram: cleanRam || undefined,
       price: basePriceNum > 0 ? basePriceNum : 0,
       originalPrice: baseOrigPriceNum,
-      ram: ram === 'Other' ? (customRam || undefined) : (ram || undefined),
       availability: 'In Stock'
     };
     setVariantsList(prev => [...prev, newVariant]);
   };
 
-  const handleAddCustomVariant = () => {
+  // Add blank custom variant row for direct on-screen editing
+  const handleAddBlankVariantRow = () => {
     setEnableVariants(true);
     const basePriceNum = parseFloat(price) || 0;
     const baseOrigPriceNum = originalPrice ? parseFloat(originalPrice) : undefined;
+    const curBaseStorage = storage === 'Other' ? (customStorage || '128GB') : storage;
+    const curBaseRam = ram === 'Other' ? (customRam || undefined) : (ram || undefined);
+
     const newVariant: ProductVariant = {
-      storage: '256GB',
+      storage: curBaseStorage || '128GB',
+      ram: curBaseRam || '8GB',
       price: basePriceNum > 0 ? basePriceNum : 0,
       originalPrice: baseOrigPriceNum,
-      ram: ram === 'Other' ? (customRam || undefined) : (ram || undefined),
       availability: 'In Stock'
     };
     setVariantsList(prev => [...prev, newVariant]);
+  };
+
+  // Add variant from custom RAM/ROM/Rate builder
+  const handleAddFromBuilder = () => {
+    setEnableVariants(true);
+    const cleanRam = builderRam === 'None' || builderRam === 'N/A' ? '' : builderRam.trim();
+    const cleanRom = builderRom.trim() || '128GB';
+    const rateNum = parseFloat(builderPrice) || parseFloat(price) || 0;
+    const origRateNum = builderOrigPrice ? parseFloat(builderOrigPrice) : (originalPrice ? parseFloat(originalPrice) : undefined);
+
+    const exists = variantsList.some(v => 
+      v.storage.toLowerCase() === cleanRom.toLowerCase() && 
+      (v.ram || '').toLowerCase() === cleanRam.toLowerCase()
+    );
+    if (exists) {
+      setFormError(`यो भेरियन्ट (${cleanRam ? cleanRam + ' / ' : ''}${cleanRom}) पहिले नै सूचीमा छ (Variant already exists).`);
+      return;
+    }
+    setFormError(null);
+
+    const newVariant: ProductVariant = {
+      storage: cleanRom,
+      ram: cleanRam || undefined,
+      price: rateNum > 0 ? rateNum : 0,
+      originalPrice: origRateNum,
+      availability: 'In Stock'
+    };
+    setVariantsList(prev => [...prev, newVariant]);
+    setBuilderPrice('');
+    setBuilderOrigPrice('');
   };
 
   const handleUpdateVariant = (index: number, field: keyof ProductVariant, value: any) => {
@@ -255,20 +299,30 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
       setVariantsList([]);
     }
     
-    if (STORAGE_OPTIONS.includes(p.storage || '')) {
-      setStorage(p.storage || '128GB');
+    // Safely extract single storage so ERP and accounting data stay clean
+    let cleanStorage = p.storage || '128GB';
+    if (cleanStorage.includes('•')) {
+      const firstChunk = cleanStorage.split('•')[0].trim();
+      cleanStorage = firstChunk.includes('/') ? (firstChunk.split('/')[1]?.trim() || firstChunk) : firstChunk;
+    }
+    if (STORAGE_OPTIONS.includes(cleanStorage)) {
+      setStorage(cleanStorage);
       setCustomStorage('');
     } else {
       setStorage('Other');
-      setCustomStorage(p.storage || '');
+      setCustomStorage(cleanStorage);
     }
 
-    if (RAM_OPTIONS.includes(p.ram || '')) {
-      setRam(p.ram || '8GB');
+    let cleanRam = p.ram || '8GB';
+    if (cleanRam.includes('/')) {
+      cleanRam = cleanRam.split('/')[0]?.trim() || cleanRam;
+    }
+    if (RAM_OPTIONS.includes(cleanRam)) {
+      setRam(cleanRam);
       setCustomRam('');
     } else {
       setRam('Other');
-      setCustomRam(p.ram || '');
+      setCustomRam(cleanRam);
     }
 
     if (COLOR_PRESETS.includes(p.color || '')) {
@@ -666,15 +720,16 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
       finalDescription = autoGen.description || `${brand} ${model || name} - Pandey Mobile Store Quality Guarantee`;
     }
 
-    // Validate GB variants if enabled
+    // Validate RAM & ROM variants if enabled
     if (enableVariants && variantsList.length > 0) {
       for (const v of variantsList) {
         if (!v.storage || !v.storage.trim()) {
-          setFormError('कृपया सबै भेरियन्टको GB स्टोरेज नाम (e.g. 128GB, 256GB) प्रविष्ट गर्नुहोस्।');
+          setFormError('कृपया सबै भेरियन्टको ROM / Storage नाम (e.g. 128GB, 256GB) प्रविष्ट गर्नुहोस्।');
           return;
         }
-        if (isNaN(v.price) || v.price < 0) {
-          setFormError(`कृपया ${v.storage} भेरियन्टको सही बिक्री मूल्य (NPR) प्रविष्ट गर्नुहोस्।`);
+        if (isNaN(v.price) || v.price <= 0) {
+          const vLabel = v.ram ? `${v.ram} + ${v.storage}` : v.storage;
+          setFormError(`कृपया ${vLabel} भेरियन्टको सही बिक्री दर / मूल्य (NPR) प्रविष्ट गर्नुहोस्।`);
           return;
         }
       }
@@ -684,9 +739,9 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
       ? (numPrice > 0 ? numPrice : variantsList[0].price)
       : numPrice;
 
-    const effectiveBaseStorage = (enableVariants && variantsList.length > 0)
-      ? variantsList.map(v => v.storage).join(' / ')
-      : finalStorage;
+    // Standard primary clean storage & ram: protects ERP inventory, billing, reports from malformed strings
+    const cleanPrimaryStorage = finalStorage || (variantsList.length > 0 ? variantsList[0].storage : '128GB');
+    const cleanPrimaryRam = finalRam || (variantsList.length > 0 ? variantsList[0].ram : undefined);
 
     const productPayload = {
       name: name.trim(),
@@ -700,8 +755,8 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
       originalPrice: originalPrice.trim() ? parseFloat(originalPrice) : undefined,
       image: primaryImage,
       images: uploadedPhotos.length > 0 ? uploadedPhotos : [primaryImage],
-      storage: effectiveBaseStorage,
-      ram: finalRam,
+      storage: cleanPrimaryStorage,
+      ram: cleanPrimaryRam,
       variants: (enableVariants && variantsList.length > 0) ? variantsList : undefined,
       color: finalColor,
       colorImages: Object.keys(colorImages).length > 0 ? colorImages : undefined,
@@ -1003,17 +1058,17 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
                       </div>
                     )}
 
-                    {/* GB Storage Variants Badges */}
+                    {/* RAM & ROM Variants Badges */}
                     {prod.variants && prod.variants.length > 0 && (
                       <div className="flex flex-wrap items-center gap-1 mt-1.5">
-                        <span className="text-[10px] font-bold text-purple-700">GB:</span>
-                        {prod.variants.map((v) => (
+                        <span className="text-[10px] font-bold text-purple-700">Variants:</span>
+                        {prod.variants.map((v, vIdx) => (
                           <span
-                            key={v.storage}
+                            key={`${v.ram || ''}-${v.storage}-${vIdx}`}
                             className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200"
-                            title={`${v.storage}: ${formatNPR(v.price)} (${v.availability || 'In Stock'})`}
+                            title={`${v.ram ? `${v.ram} RAM + ` : ''}${v.storage} ROM: ${formatNPR(v.price)} (${v.availability || 'In Stock'})`}
                           >
-                            {v.storage}: {formatNPR(v.price)}
+                            {v.ram ? `${v.ram}/${v.storage}` : v.storage}: {formatNPR(v.price)}
                           </span>
                         ))}
                       </div>
@@ -1789,18 +1844,22 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
                   </div>
                 </div>
 
-                {/* GB Storage & Price Variants Section */}
-                <div className="bg-gradient-to-br from-purple-50/80 via-indigo-50/60 to-slate-50 border-2 border-purple-200/90 rounded-2xl p-4 sm:p-5 space-y-4 shadow-xs">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-purple-200/60">
+                {/* RAM + ROM Storage & Price Variants Section */}
+                <div className="bg-gradient-to-br from-purple-50/90 via-indigo-50/70 to-slate-50 border-2 border-purple-200 rounded-2xl p-4 sm:p-5 space-y-4 shadow-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-purple-200/80">
                     <div className="flex items-center space-x-3">
-                      <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-purple-600/20">
+                      <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-purple-600/20">
                         <Layers className="w-5 h-5" />
                       </div>
                       <div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 flex-wrap gap-1">
                           <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                            GB Storage & Price Variants (स्टोरेज भेरियन्टहरू)
+                            RAM + ROM & Rate Variants (र्याम, रोम तथा दर)
                           </h4>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                            <Shield className="w-3 h-3 text-emerald-600" />
+                            100% ERP Safe
+                          </span>
                           {enableVariants && variantsList.length > 0 && (
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-600 text-white">
                               {variantsList.length} Active
@@ -1808,7 +1867,7 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
                           )}
                         </div>
                         <p className="text-[11px] text-slate-600 mt-0.5">
-                          एउटै फोनका विभिन्न GB क्षमता (उदा: 128GB, 256GB, 512GB, 1TB) र फरक-फरक मूल्यहरू एकैसाथ थप्नुहोस्।
+                          एउटै फोनका फरक-फरक RAM र ROM (उदा: 8GB/128GB, 8GB/256GB, 12GB/512GB) अनुसार छुट्टाछुट्टै बिक्री दर (Rate) राख्नुहोस्। ERP इन्भेन्टरी र बिलिङमा कुनै असर पर्दैन।
                         </p>
                       </div>
                     </div>
@@ -1823,14 +1882,15 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
                           setEnableVariants(checked);
                           if (checked && variantsList.length === 0) {
                             const curBaseStorage = storage === 'Other' ? (customStorage || '128GB') : storage;
+                            const curBaseRam = ram === 'Other' ? (customRam || undefined) : (ram || undefined);
                             const curBasePrice = parseFloat(price) || 0;
                             const curBaseOrig = originalPrice ? parseFloat(originalPrice) : undefined;
                             setVariantsList([
                               {
                                 storage: curBaseStorage,
+                                ram: curBaseRam,
                                 price: curBasePrice,
                                 originalPrice: curBaseOrig,
-                                ram: ram === 'Other' ? (customRam || undefined) : (ram || undefined),
                                 availability: 'In Stock'
                               }
                             ]);
@@ -1838,60 +1898,265 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
                         }}
                         className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
                       />
-                      <span>Enable GB Variants</span>
+                      <span>Enable RAM + ROM Variants</span>
                     </label>
                   </div>
 
-                  {enableVariants && (
-                    <div className="space-y-4 pt-1">
-                      {/* Quick Add Preset Buttons */}
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[11px] font-bold text-slate-600">Quick Add GB:</span>
-                        {['64GB', '128GB', '256GB', '512GB', '1TB', '2TB'].map((preset) => {
-                          const alreadyAdded = variantsList.some(v => v.storage.toLowerCase() === preset.toLowerCase());
+                  {/* Even if toggle is off, allow 1-click addition */}
+                  {!enableVariants && (
+                    <div className="bg-white/80 p-3.5 rounded-xl border border-dashed border-purple-300 space-y-2.5">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-slate-700">
+                          ⚡ १-क्लिकमा भेरियन्ट थप्नुहोस् (तलका कुनै पनि बटन थिच्नुहोस्):
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEnableVariants(true);
+                            if (variantsList.length === 0) {
+                              handleAddBlankVariantRow();
+                            }
+                          }}
+                          className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center space-x-1"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>+ भेरियन्ट सक्रिय गर्नुहोस् (Enable & Add)</span>
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {[
+                          { r: '6GB', s: '128GB' },
+                          { r: '8GB', s: '128GB' },
+                          { r: '8GB', s: '256GB' },
+                          { r: '12GB', s: '256GB' },
+                          { r: '12GB', s: '512GB' },
+                          { r: '', s: '128GB' },
+                          { r: '', s: '256GB' },
+                          { r: '', s: '512GB' }
+                        ].map((combo) => {
+                          const label = combo.r ? `${combo.r}/${combo.s}` : combo.s;
                           return (
                             <button
-                              key={preset}
+                              key={label}
                               type="button"
-                              onClick={() => handleAddVariantPreset(preset)}
-                              disabled={alreadyAdded}
-                              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                                alreadyAdded
-                                  ? 'bg-purple-100 text-purple-400 cursor-not-allowed border border-purple-200 line-through'
-                                  : 'bg-white hover:bg-purple-600 hover:text-white text-purple-700 border border-purple-300 shadow-2xs hover:shadow-xs'
-                              }`}
+                              onClick={() => handleAddComboPreset(combo.r, combo.s)}
+                              className="px-2.5 py-1 rounded-lg text-xs font-bold bg-white hover:bg-purple-600 hover:text-white text-purple-700 border border-purple-300 shadow-2xs transition-all cursor-pointer"
                             >
-                              + {preset}
+                              + {label}
                             </button>
                           );
                         })}
-                        <button
-                          type="button"
-                          onClick={handleAddCustomVariant}
-                          className="px-3 py-1 rounded-lg text-xs font-bold bg-purple-700 hover:bg-purple-800 text-white transition-all cursor-pointer shadow-2xs flex items-center space-x-1"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Custom GB</span>
-                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {enableVariants && (
+                    <div className="space-y-4 pt-1">
+                      {/* Popular RAM + ROM combo quick buttons */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-slate-700">१-क्लिक लोकप्रिय भेरियन्ट थप्नुहोस् (Quick Combos):</span>
+                          <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            ✓ ERP Safe • कुनै असर गर्दैन
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {[
+                            { r: '4GB', s: '64GB' },
+                            { r: '6GB', s: '128GB' },
+                            { r: '8GB', s: '128GB' },
+                            { r: '8GB', s: '256GB' },
+                            { r: '12GB', s: '256GB' },
+                            { r: '12GB', s: '512GB' },
+                            { r: '16GB', s: '512GB' },
+                            { r: '16GB', s: '1TB' },
+                            { r: '', s: '128GB' },
+                            { r: '', s: '256GB' },
+                            { r: '', s: '512GB' },
+                            { r: '', s: '1TB' }
+                          ].map((combo) => {
+                            const label = combo.r ? `${combo.r}/${combo.s}` : combo.s;
+                            const alreadyAdded = variantsList.some(v => 
+                              v.storage.toLowerCase() === combo.s.toLowerCase() && 
+                              (v.ram || '').toLowerCase() === combo.r.toLowerCase()
+                            );
+                            return (
+                              <button
+                                key={label}
+                                type="button"
+                                onClick={() => handleAddComboPreset(combo.r, combo.s)}
+                                disabled={alreadyAdded}
+                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                  alreadyAdded
+                                    ? 'bg-purple-100 text-purple-400 cursor-not-allowed border border-purple-200 line-through'
+                                    : 'bg-white hover:bg-purple-600 hover:text-white text-purple-700 border border-purple-300 shadow-2xs hover:shadow-xs'
+                                }`}
+                              >
+                                + {label}
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
 
-                      {/* Variants List Table / Cards */}
+                      {/* Custom RAM + ROM + Rate Builder Box */}
+                      <div className="p-3.5 bg-white rounded-xl border border-purple-200 shadow-xs space-y-3">
+                        <div className="flex items-center justify-between text-[11px] font-bold text-slate-800 uppercase tracking-wider">
+                          <div className="flex items-center gap-1.5">
+                            <Plus className="w-3.5 h-3.5 text-purple-600" />
+                            <span>नयाँ RAM र ROM अनुसार दर (Rate) थप्ने फारम:</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleAddBlankVariantRow}
+                            className="text-[10px] text-purple-700 hover:text-purple-900 bg-purple-50 hover:bg-purple-100 border border-purple-200 px-2 py-0.5 rounded cursor-pointer transition-colors normal-case font-bold"
+                          >
+                            + सिधै खाली रो थप्नुहोस् (+ Direct Row)
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                          {/* RAM Selection */}
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1">
+                              १. RAM (र्याम)
+                            </label>
+                            <select
+                              value={builderRam}
+                              onChange={(e) => setBuilderRam(e.target.value)}
+                              className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:bg-white"
+                            >
+                              <option value="None">None (iPhone / Single)</option>
+                              <option value="4GB">4GB RAM</option>
+                              <option value="6GB">6GB RAM</option>
+                              <option value="8GB">8GB RAM</option>
+                              <option value="12GB">12GB RAM</option>
+                              <option value="16GB">16GB RAM</option>
+                              <option value="24GB">24GB RAM</option>
+                            </select>
+                          </div>
+
+                          {/* ROM Selection */}
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1">
+                              २. ROM / Storage
+                            </label>
+                            <select
+                              value={builderRom}
+                              onChange={(e) => setBuilderRom(e.target.value)}
+                              className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-black text-slate-900 focus:bg-white"
+                            >
+                              <option value="64GB">64GB Storage</option>
+                              <option value="128GB">128GB Storage</option>
+                              <option value="256GB">256GB Storage</option>
+                              <option value="512GB">512GB Storage</option>
+                              <option value="1TB">1TB Storage</option>
+                              <option value="2TB">2TB Storage</option>
+                            </select>
+                          </div>
+
+                          {/* Rate / Price in NPR */}
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1">
+                              ३. Rate / बिक्री दर (NPR) *
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rs.</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="100"
+                                placeholder={price ? price : 'उदा: 145000'}
+                                value={builderPrice}
+                                onChange={(e) => setBuilderPrice(e.target.value)}
+                                className="w-full pl-8 pr-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-indigo-700 focus:bg-white"
+                              />
+                            </div>
+                          </div>
+
+                          {/* MRP / Strike Price */}
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-600 uppercase tracking-wider block mb-1">
+                              ४. MRP / स्ट्राइक (ऐच्छिक)
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rs.</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="100"
+                                placeholder={originalPrice ? originalPrice : 'उदा: 160000'}
+                                value={builderOrigPrice}
+                                onChange={(e) => setBuilderOrigPrice(e.target.value)}
+                                className="w-full pl-8 pr-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-600 focus:bg-white"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-1">
+                          <span className="text-[10px] text-slate-400">
+                            💡 थपिएका भेरियन्टहरू ग्राहक स्टोरफ्रन्टमा तुरुन्त देखिन्छन्।
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleAddFromBuilder}
+                            className="px-4 py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-extrabold shadow-sm transition-all cursor-pointer flex items-center space-x-1.5"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>भेरियन्ट थप्नुहोस् (Add This Variant)</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Active Variants List Table / Cards */}
                       {variantsList.length === 0 ? (
                         <div className="p-4 bg-white/80 rounded-xl border border-dashed border-purple-300 text-center space-y-1">
-                          <p className="text-xs font-bold text-slate-700">कुनै पनि GB भेरियन्ट थपिएको छैन (No variants added yet)</p>
-                          <p className="text-[11px] text-slate-500">माथिका "+ 128GB", "+ 256GB", "+ 512GB" बटनहरू थिचेर भेरियन्ट थप्नुहोस्।</p>
+                          <p className="text-xs font-bold text-slate-700">कुनै पनि RAM/ROM भेरियन्ट थपिएको छैन (No variants added yet)</p>
+                          <p className="text-[11px] text-slate-500">माथिका "+ 8GB/128GB", "+ 8GB/256GB" वा फारमबाट भेरियन्ट र दर थप्नुहोस्।</p>
                         </div>
                       ) : (
-                        <div className="space-y-2.5">
+                        <div className="space-y-2">
+                          <div className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <span>हाल थपिएका भेरियन्टहरू ({variantsList.length}):</span>
+                              <span className="text-[10px] text-purple-700 bg-purple-50 px-2 py-0.5 rounded font-normal">
+                                दर (Rate) वा RAM/ROM तल सिधै फेर्न सकिन्छ
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleAddBlankVariantRow}
+                              className="px-2.5 py-1 bg-white hover:bg-purple-50 text-purple-700 border border-purple-300 rounded-lg text-xs font-bold flex items-center space-x-1 transition-colors cursor-pointer shadow-2xs"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>+ थप रो (Add Row)</span>
+                            </button>
+                          </div>
+
                           {variantsList.map((variant, idx) => (
                             <div
                               key={idx}
                               className="p-3 bg-white rounded-xl border border-purple-200/90 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center gap-3 transition-all hover:border-purple-400"
                             >
-                              {/* Storage Pill / Input */}
+                              {/* RAM Field */}
+                              <div className="w-full md:w-32 space-y-1">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                                  RAM (र्याम)
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g. 8GB / None"
+                                  value={variant.ram || ''}
+                                  onChange={(e) => handleUpdateVariant(idx, 'ram', e.target.value || undefined)}
+                                  className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-purple-700 focus:bg-white"
+                                />
+                              </div>
+
+                              {/* ROM / Storage Field */}
                               <div className="w-full md:w-36 space-y-1">
                                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                                  Storage *
+                                  ROM / Storage *
                                 </label>
                                 <input
                                   type="text"
@@ -1903,10 +2168,10 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
                                 />
                               </div>
 
-                              {/* Selling Price */}
+                              {/* Selling Rate / Price in NPR */}
                               <div className="w-full md:w-44 space-y-1">
                                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                                  Price (NPR) *
+                                  Rate / दर (NPR) *
                                 </label>
                                 <div className="relative">
                                   <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rs.</span>
@@ -1918,7 +2183,7 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
                                     placeholder="Price in NPR"
                                     value={variant.price || ''}
                                     onChange={(e) => handleUpdateVariant(idx, 'price', parseFloat(e.target.value) || 0)}
-                                    className="w-full pl-8 pr-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-indigo-700 focus:bg-white"
+                                    className="w-full pl-8 pr-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-black text-indigo-700 focus:bg-white"
                                   />
                                 </div>
                               </div>
@@ -1926,7 +2191,7 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
                               {/* Original / MRP Price */}
                               <div className="w-full md:w-36 space-y-1">
                                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                                  MRP (Optional)
+                                  MRP / स्ट्राइक
                                 </label>
                                 <div className="relative">
                                   <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rs.</span>
@@ -1940,20 +2205,6 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
                                     className="w-full pl-8 pr-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-600 focus:bg-white"
                                   />
                                 </div>
-                              </div>
-
-                              {/* RAM Capacity */}
-                              <div className="w-full md:w-28 space-y-1">
-                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                                  RAM
-                                </label>
-                                <input
-                                  type="text"
-                                  placeholder="e.g. 8GB"
-                                  value={variant.ram || ''}
-                                  onChange={(e) => handleUpdateVariant(idx, 'ram', e.target.value || undefined)}
-                                  className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium text-slate-700 focus:bg-white"
-                                />
                               </div>
 
                               {/* Availability */}

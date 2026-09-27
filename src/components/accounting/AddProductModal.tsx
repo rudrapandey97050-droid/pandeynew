@@ -90,19 +90,24 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   const [initialImei, setInitialImei] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   
-  // GB Variants state
+  // RAM & ROM Variants state
   const [variants, setVariants] = useState<ProductVariant[]>(
     editingProduct?.variants && Array.isArray(editingProduct.variants) ? editingProduct.variants.map(v => ({ ...v })) : []
   );
 
-  const handleAddGbVariant = (storagePreset: string) => {
-    if (variants.some(v => v.storage.toLowerCase() === storagePreset.toLowerCase())) return;
+  const handleAddRamRomVariant = (ramPreset: string, storagePreset: string) => {
+    const cleanRam = ramPreset.trim();
+    const cleanRom = storagePreset.trim();
+    if (variants.some(v => v.storage.toLowerCase() === cleanRom.toLowerCase() && (v.ram || '').toLowerCase() === cleanRam.toLowerCase())) {
+      return;
+    }
     const baseP = typeof price === 'number' ? price : Number(price) || 0;
     const baseOrig = originalPrice ? Number(originalPrice) : undefined;
     setVariants(prev => [
       ...prev,
       {
-        storage: storagePreset,
+        storage: cleanRom,
+        ram: cleanRam || undefined,
         price: baseP > 0 ? baseP : 0,
         originalPrice: baseOrig,
         availability: 'In Stock'
@@ -562,50 +567,71 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
               </div>
             </div>
 
-            {/* GB Storage Variants Section */}
+            {/* RAM & ROM Storage Variants Section */}
             <div className="p-4 bg-purple-50/60 border border-purple-200 rounded-2xl space-y-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div className="flex items-center space-x-2">
                   <Layers className="w-4 h-4 text-purple-600" />
                   <span className="text-xs font-bold text-slate-900">
-                    GB Storage Variants (स्टोरेज भेरियन्टहरू तथा मूल्य)
+                    RAM + ROM Variants & Rates (र्याम, रोम तथा बिक्री दर)
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  {['64GB', '128GB', '256GB', '512GB', '1TB'].map((preset) => (
-                    <button
-                      key={preset}
-                      type="button"
-                      onClick={() => handleAddGbVariant(preset)}
-                      className="px-2 py-0.5 text-[10px] font-bold bg-white hover:bg-purple-600 hover:text-white text-purple-700 border border-purple-300 rounded-md transition-colors cursor-pointer"
-                    >
-                      + {preset}
-                    </button>
-                  ))}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {[
+                    { r: '6GB', s: '128GB' },
+                    { r: '8GB', s: '128GB' },
+                    { r: '8GB', s: '256GB' },
+                    { r: '12GB', s: '256GB' },
+                    { r: '12GB', s: '512GB' },
+                    { r: '', s: '128GB' },
+                    { r: '', s: '256GB' },
+                    { r: '', s: '512GB' }
+                  ].map((preset) => {
+                    const label = preset.r ? `${preset.r}/${preset.s}` : preset.s;
+                    return (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => handleAddRamRomVariant(preset.r, preset.s)}
+                        className="px-2 py-0.5 text-[10px] font-bold bg-white hover:bg-purple-600 hover:text-white text-purple-700 border border-purple-300 rounded-md transition-colors cursor-pointer"
+                      >
+                        + {label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               {variants.length > 0 ? (
                 <div className="space-y-2">
                   {variants.map((v, i) => (
-                    <div key={i} className="flex items-center gap-2 bg-white p-2.5 rounded-xl border border-purple-100 shadow-2xs">
+                    <div key={i} className="flex flex-wrap sm:flex-nowrap items-center gap-2 bg-white p-2.5 rounded-xl border border-purple-100 shadow-2xs">
+                      <div className="w-24">
+                        <input
+                          type="text"
+                          value={v.ram || ''}
+                          onChange={(e) => handleUpdateGbVariant(i, 'ram', e.target.value || undefined)}
+                          placeholder="RAM (e.g. 8GB)"
+                          className="w-full px-2 py-1 text-xs font-bold text-purple-700 bg-slate-50 border border-slate-200 rounded-lg"
+                        />
+                      </div>
                       <div className="w-24">
                         <input
                           type="text"
                           value={v.storage}
                           onChange={(e) => handleUpdateGbVariant(i, 'storage', e.target.value)}
-                          placeholder="Storage"
-                          className="w-full px-2 py-1 text-xs font-bold bg-slate-50 border border-slate-200 rounded-lg"
+                          placeholder="ROM (e.g. 256GB)"
+                          className="w-full px-2 py-1 text-xs font-black bg-slate-50 border border-slate-200 rounded-lg"
                         />
                       </div>
-                      <div className="flex-1 relative">
+                      <div className="flex-1 min-w-[120px] relative">
                         <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">Rs.</span>
                         <input
                           type="number"
                           value={v.price || ''}
                           onChange={(e) => handleUpdateGbVariant(i, 'price', Number(e.target.value) || 0)}
-                          placeholder="Selling Price"
-                          className="w-full pl-7 pr-2 py-1 text-xs font-bold text-indigo-700 bg-slate-50 border border-slate-200 rounded-lg"
+                          placeholder="Rate (NPR)"
+                          className="w-full pl-7 pr-2 py-1 text-xs font-black text-indigo-700 bg-slate-50 border border-slate-200 rounded-lg"
                         />
                       </div>
                       <div className="w-28 relative">
@@ -621,7 +647,8 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                       <button
                         type="button"
                         onClick={() => handleRemoveGbVariant(i)}
-                        className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg"
+                        className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg cursor-pointer"
+                        title="Remove variant"
                       >
                         <X className="w-4 h-4" />
                       </button>
@@ -630,7 +657,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                 </div>
               ) : (
                 <p className="text-[11px] text-slate-500">
-                  यदि यो फोनको धेरै स्टोरेज क्षमता (128GB, 256GB, आदि) छन् भने माथिका बटन थिचेर फरक-फरक मूल्य राख्नुहोस्।
+                  यदि यो फोनको फरक-फरक RAM र ROM क्षमता (6/128, 8/128, 8/256GB, आदि) छन् भने माथिका बटन थिचेर छुट्टाछुट्टै बिक्री दर (Rate) राख्नुहोस्।
                 </p>
               )}
             </div>

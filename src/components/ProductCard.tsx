@@ -9,7 +9,7 @@ import {
   Layers,
   Cpu
 } from 'lucide-react';
-import { Product } from '../types.ts';
+import { Product, ProductVariant } from '../types.ts';
 import { formatNPR } from '../utils/formatters.ts';
 
 interface ProductCardProps {
@@ -27,12 +27,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const [imgError, setImgError] = useState(false);
   const [selectedColorState, setSelectedColorState] = useState<string | null>(null);
-  const [selectedVariantStorage, setSelectedVariantStorage] = useState<string | null>(null);
+  const [selectedVariantKey, setSelectedVariantKey] = useState<string | null>(null);
   const isPreOwned = product.condition === 'Used' || product.condition === 'Pre-Owned' || product.condition === 'Refurbished';
   
+  const getVariantKey = (v: ProductVariant) => `${v.ram || ''}-${v.storage}`;
+
   const hasVariants = Boolean(product.variants && product.variants.length > 0);
   const activeVariant = hasVariants
-    ? (product.variants!.find(v => v.storage === selectedVariantStorage) || product.variants![0])
+    ? (product.variants!.find(v => getVariantKey(v) === selectedVariantKey) || product.variants![0])
     : null;
 
   const effectivePrice = activeVariant ? activeVariant.price : product.price;
@@ -226,28 +228,30 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             </div>
           ) : null}
 
-          {/* Interactive GB Variants Pills */}
+          {/* Interactive RAM & ROM Variants Pills */}
           {hasVariants && product.variants!.length > 1 && (
             <div className="mt-2 pt-2 border-t border-slate-100 flex flex-wrap items-center gap-1.5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">GB:</span>
-              {product.variants!.map((variant) => {
-                const isSelected = activeVariant?.storage === variant.storage;
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Variant:</span>
+              {product.variants!.map((variant, vIdx) => {
+                const vKey = getVariantKey(variant);
+                const isSelected = activeVariant ? getVariantKey(activeVariant) === vKey : false;
+                const displayLabel = variant.ram ? `${variant.ram}/${variant.storage}` : variant.storage;
                 return (
                   <button
-                    key={variant.storage}
+                    key={`${vKey}-${vIdx}`}
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setSelectedVariantStorage(variant.storage);
+                      setSelectedVariantKey(vKey);
                     }}
                     className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
                       isSelected
                         ? 'bg-indigo-600 text-white shadow-xs scale-105 ring-1 ring-indigo-600'
                         : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                     }`}
-                    title={`${variant.storage}: ${formatNPR(variant.price)} (${variant.availability || 'In Stock'})`}
+                    title={`${variant.ram ? `${variant.ram} RAM + ` : ''}${variant.storage} ROM: ${formatNPR(variant.price)} (${variant.availability || 'In Stock'})`}
                   >
-                    {variant.storage}
+                    {displayLabel}
                   </button>
                 );
               })}
@@ -264,7 +268,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 {formatNPR(effectiveOriginalPrice)}
               </span>
             )}
-            {hasVariants && product.variants!.length > 1 && !selectedVariantStorage && minVariantPrice !== maxVariantPrice && (
+            {hasVariants && product.variants!.length > 1 && !selectedVariantKey && minVariantPrice !== maxVariantPrice && (
               <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
                 (Starting)
               </span>
