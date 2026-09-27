@@ -113,12 +113,14 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     if (product) {
       SeoService.setProductSeo(product);
 
-      const initialVar = (product.variants && product.variants.length > 0) ? product.variants[0] : {
-        storage: product.storage || '128GB',
-        price: product.price,
-        originalPrice: product.originalPrice,
-        availability: product.availability || 'In Stock'
-      };
+      const initialVar = (product.variants && product.variants.length > 0)
+        ? (product.variants.find(v => v.storage === product.storage) || product.variants[0])
+        : {
+            storage: product.storage || '128GB',
+            price: product.price,
+            originalPrice: product.originalPrice,
+            availability: product.availability || 'In Stock'
+          };
       setSelectedVariant(initialVar);
       const initialCol = product.color || (product.availableColors && product.availableColors[0]) || 'Standard';
       setSelectedColor(initialCol);
@@ -379,25 +381,54 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               {/* Storage Capacity Selector (Apple Style Cards) */}
               {variants.length > 1 && (
                 <div className="space-y-2.5">
-                  <label className="text-xs font-bold text-[#86868b] uppercase tracking-wider block">
-                    Select Storage Capacity:
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-[#86868b] uppercase tracking-wider block">
+                      Storage Capacity (स्टोरेज क्षमता):
+                    </label>
+                    <span className="text-xs font-bold text-white">
+                      {selectedVariant.storage} {selectedVariant.ram ? `(${selectedVariant.ram} RAM)` : ''}
+                    </span>
+                  </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                     {variants.map((variant) => {
                       const isSelected = selectedVariant.storage === variant.storage;
+                      const isVariantOutOfStock = variant.availability === 'Out of Stock';
                       return (
                         <button
                           key={variant.storage}
                           type="button"
                           onClick={() => setSelectedVariant(variant)}
-                          className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                          className={`p-3 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden ${
                             isSelected
-                              ? 'border-white bg-white/10 text-white ring-1 ring-white'
+                              ? 'border-indigo-400 bg-indigo-950/40 text-white ring-2 ring-indigo-500 shadow-md shadow-indigo-500/20'
                               : 'border-white/15 bg-white/5 text-[#a1a1a6] hover:border-white/30 hover:text-white'
-                          }`}
+                          } ${isVariantOutOfStock ? 'opacity-60' : ''}`}
                         >
-                          <div className="text-sm font-bold">{variant.storage}</div>
-                          <div className="text-xs text-white/80 mt-0.5">{formatNPR(variant.price)}</div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-extrabold text-white">{variant.storage}</span>
+                            {variant.ram && (
+                              <span className="text-[10px] font-bold text-[#86868b]">{variant.ram}</span>
+                            )}
+                          </div>
+                          <div className="text-xs font-bold text-indigo-300 mt-1">
+                            {formatNPR(variant.price)}
+                          </div>
+                          {variant.originalPrice && variant.originalPrice > variant.price && (
+                            <div className="text-[10px] text-[#86868b] line-through mt-0.5">
+                              {formatNPR(variant.originalPrice)}
+                            </div>
+                          )}
+                          {variant.availability === 'Limited Stock' && (
+                            <div className="text-[9px] font-bold text-amber-400 mt-1 flex items-center space-x-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                              <span>Limited</span>
+                            </div>
+                          )}
+                          {isVariantOutOfStock && (
+                            <div className="text-[9px] font-bold text-rose-400 mt-1">
+                              Out of Stock
+                            </div>
+                          )}
                         </button>
                       );
                     })}

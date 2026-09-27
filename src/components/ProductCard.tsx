@@ -27,8 +27,31 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const [imgError, setImgError] = useState(false);
   const [selectedColorState, setSelectedColorState] = useState<string | null>(null);
+  const [selectedVariantStorage, setSelectedVariantStorage] = useState<string | null>(null);
   const isPreOwned = product.condition === 'Used' || product.condition === 'Pre-Owned' || product.condition === 'Refurbished';
   
+  const hasVariants = Boolean(product.variants && product.variants.length > 0);
+  const activeVariant = hasVariants
+    ? (product.variants!.find(v => v.storage === selectedVariantStorage) || product.variants![0])
+    : null;
+
+  const effectivePrice = activeVariant ? activeVariant.price : product.price;
+  const effectiveOriginalPrice = activeVariant?.originalPrice !== undefined ? activeVariant.originalPrice : product.originalPrice;
+  const effectiveStorage = activeVariant ? activeVariant.storage : product.storage;
+  const effectiveRam = activeVariant?.ram || product.ram;
+
+  const minVariantPrice = hasVariants ? Math.min(...product.variants!.map(v => v.price)) : product.price;
+  const maxVariantPrice = hasVariants ? Math.max(...product.variants!.map(v => v.price)) : product.price;
+
+  const productForActions: Product = activeVariant ? {
+    ...product,
+    storage: activeVariant.storage,
+    price: activeVariant.price,
+    originalPrice: activeVariant.originalPrice,
+    ram: activeVariant.ram || product.ram,
+    availability: activeVariant.availability || product.availability
+  } : product;
+
   const allPhotos = product.images && product.images.length > 0
     ? product.images
     : product.image
@@ -42,6 +65,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     : colorPhoto || product.image || (allPhotos[0] || 'https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=800&auto=format&fit=crop&q=80');
 
   const isOutOfStock =
+    (activeVariant?.availability === 'Out of Stock') ||
     product.availability === 'Out of Stock' ||
     product.availability === 'Sold Out' ||
     (typeof product.stock === 'number' &&
@@ -49,8 +73,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       product.availability !== 'In Stock' &&
       product.availability !== 'Available' &&
       product.availability !== 'Limited Stock');
-  const isPreOrder = product.availability === 'Pre-Order';
-  const isLimited = product.availability === 'Limited Stock' || (typeof product.stock === 'number' && product.stock > 0 && product.stock <= 2);
+  const isPreOrder = (activeVariant?.availability === 'Pre-Order') || product.availability === 'Pre-Order';
+  const isLimited = (activeVariant?.availability === 'Limited Stock') || product.availability === 'Limited Stock' || (typeof product.stock === 'number' && product.stock > 0 && product.stock <= 2);
   const stockCount = typeof product.stock === 'number' && product.stock > 0
     ? product.stock
     : (isOutOfStock ? 0 : 5);
@@ -156,15 +180,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1">
             <span className="font-bold text-indigo-600 uppercase tracking-wider">{product.brand}</span>
             <div className="flex items-center space-x-1.5 font-medium text-slate-600">
-              {product.storage && <span>{product.storage}</span>}
-              {product.storage && product.ram && <span>•</span>}
-              {product.ram && <span>{product.ram} RAM</span>}
+              {effectiveStorage && <span>{effectiveStorage}</span>}
+              {effectiveStorage && effectiveRam && <span>•</span>}
+              {effectiveRam && <span>{effectiveRam} RAM</span>}
             </div>
           </div>
 
           {/* Product Title / Model */}
           <h3
-            onClick={() => onSelectProduct(product)}
+            onClick={() => onSelectProduct(productForActions)}
             className="font-bold text-slate-900 text-sm hover:text-indigo-600 transition-colors line-clamp-1 cursor-pointer"
           >
             {product.name}
@@ -202,14 +226,47 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             </div>
           ) : null}
 
+          {/* Interactive GB Variants Pills */}
+          {hasVariants && product.variants!.length > 1 && (
+            <div className="mt-2 pt-2 border-t border-slate-100 flex flex-wrap items-center gap-1.5">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">GB:</span>
+              {product.variants!.map((variant) => {
+                const isSelected = activeVariant?.storage === variant.storage;
+                return (
+                  <button
+                    key={variant.storage}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedVariantStorage(variant.storage);
+                    }}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-indigo-600 text-white shadow-xs scale-105 ring-1 ring-indigo-600'
+                        : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                    title={`${variant.storage}: ${formatNPR(variant.price)} (${variant.availability || 'In Stock'})`}
+                  >
+                    {variant.storage}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {/* Pricing */}
           <div className="flex items-baseline space-x-2 mt-2">
             <span className="text-base sm:text-lg font-black text-slate-900">
-              {formatNPR(product.price)}
+              {formatNPR(effectivePrice)}
             </span>
-            {product.originalPrice && product.originalPrice > product.price && (
+            {effectiveOriginalPrice && effectiveOriginalPrice > effectivePrice && (
               <span className="text-xs text-slate-400 line-through">
-                {formatNPR(product.originalPrice)}
+                {formatNPR(effectiveOriginalPrice)}
+              </span>
+            )}
+            {hasVariants && product.variants!.length > 1 && !selectedVariantStorage && minVariantPrice !== maxVariantPrice && (
+              <span className="text-[10px] font-semibold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
+                (Starting)
               </span>
             )}
           </div>
@@ -227,7 +284,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {/* Exchange button */}
           <button
             type="button"
-            onClick={() => onExchangeWithThis(product)}
+            onClick={() => onExchangeWithThis(productForActions)}
             className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200 font-bold text-xs rounded-xl transition-colors flex items-center justify-center space-x-1.5 shadow-xs cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5 text-slate-600" />
@@ -237,14 +294,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              onClick={() => onSelectProduct(product)}
+              onClick={() => onSelectProduct(productForActions)}
               className="py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition-colors text-center cursor-pointer"
             >
               Details
             </button>
             <button
               type="button"
-              onClick={() => isOutOfStock ? onSelectProduct(product) : onOrderProduct(product)}
+              onClick={() => isOutOfStock ? onSelectProduct(productForActions) : onOrderProduct(productForActions)}
               className={`py-2 font-bold text-xs rounded-xl transition-colors text-center shadow-xs cursor-pointer ${
                 isOutOfStock
                   ? 'bg-slate-200 hover:bg-slate-300 text-slate-700'

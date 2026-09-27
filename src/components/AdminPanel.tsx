@@ -56,7 +56,7 @@ interface AdminPanelProps {
   onNavigateToAccounting?: () => void;
 }
 
-type AdminTab = 'valuations' | 'upcoming' | 'products' | 'lineup' | 'rateList' | 'repairs' | 'sheets' | 'cloudsql' | 'qrPayments' | 'settings' | 'security' | 'users';
+type AdminTab = 'valuations' | 'upcoming' | 'products' | 'lineup' | 'rateList' | 'repairs' | 'sheets' | 'qrPayments' | 'settings' | 'security' | 'users';
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
   onBackToStore,
@@ -100,7 +100,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       case 'repairs':
         return !!permissions.canManageRepairs;
       case 'sheets':
-      case 'cloudsql':
       case 'qrPayments':
       case 'settings':
         return !!permissions.canManageSettings;
@@ -120,7 +119,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     'upcoming',
     'lineup',
     'sheets',
-    'cloudsql',
     'qrPayments',
     'settings',
     'users',
@@ -527,7 +525,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               {activeTab === 'rateList' && 'Used iPhone & Market Rate Sheet'}
               {activeTab === 'repairs' && 'Repair Service Appointments'}
               {activeTab === 'sheets' && 'Google Sheets Live Sync'}
-              {activeTab === 'cloudsql' && 'Cloud SQL Database Management'}
               {activeTab === 'qrPayments' && 'Store Payment QR Codes & Storefront Display'}
               {activeTab === 'settings' && 'Web Settings, Full Backup & Data Restore'}
               {activeTab === 'security' && 'Admin Security & 4-Digit PIN Reset'}

@@ -53,7 +53,8 @@ export const ProductSection: React.FC<ProductSectionProps> = ({
         (p.model && p.model.toLowerCase().includes(q)) ||
         p.category.toLowerCase().includes(q) ||
         (p.storage && p.storage.toLowerCase().includes(q)) ||
-        (p.color && p.color.toLowerCase().includes(q));
+        (p.color && p.color.toLowerCase().includes(q)) ||
+        (p.variants && p.variants.some(v => v.storage.toLowerCase().includes(q) || (v.ram && v.ram.toLowerCase().includes(q))));
       if (!match) return false;
     }
 

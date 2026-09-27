@@ -33,7 +33,7 @@ import {
   Link as LinkIcon,
   FileText
 } from 'lucide-react';
-import { Product, ProductCondition, ProductAvailability } from '../types.ts';
+import { Product, ProductCondition, ProductAvailability, ProductVariant } from '../types.ts';
 import { DataStorageService } from '../services/dataStorage.ts';
 import { formatNPR } from '../utils/formatters.ts';
 import { generateProductDescription, extractModelFromUrlOrFilename } from '../utils/productDescriptionGenerator.ts';
@@ -128,6 +128,54 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
   const [colorImgUrlInput, setColorImgUrlInput] = useState('');
   const colorFileInputRef = useRef<HTMLInputElement>(null);
 
+  // GB Storage Variants state
+  const [variantsList, setVariantsList] = useState<ProductVariant[]>([]);
+  const [enableVariants, setEnableVariants] = useState<boolean>(false);
+
+  // Add / manage GB variants helpers
+  const handleAddVariantPreset = (storagePreset: string) => {
+    setEnableVariants(true);
+    const exists = variantsList.some(v => v.storage.toLowerCase() === storagePreset.toLowerCase());
+    if (exists) return;
+
+    const basePriceNum = parseFloat(price) || 0;
+    const baseOrigPriceNum = originalPrice ? parseFloat(originalPrice) : undefined;
+    const newVariant: ProductVariant = {
+      storage: storagePreset,
+      price: basePriceNum > 0 ? basePriceNum : 0,
+      originalPrice: baseOrigPriceNum,
+      ram: ram === 'Other' ? (customRam || undefined) : (ram || undefined),
+      availability: 'In Stock'
+    };
+    setVariantsList(prev => [...prev, newVariant]);
+  };
+
+  const handleAddCustomVariant = () => {
+    setEnableVariants(true);
+    const basePriceNum = parseFloat(price) || 0;
+    const baseOrigPriceNum = originalPrice ? parseFloat(originalPrice) : undefined;
+    const newVariant: ProductVariant = {
+      storage: '256GB',
+      price: basePriceNum > 0 ? basePriceNum : 0,
+      originalPrice: baseOrigPriceNum,
+      ram: ram === 'Other' ? (customRam || undefined) : (ram || undefined),
+      availability: 'In Stock'
+    };
+    setVariantsList(prev => [...prev, newVariant]);
+  };
+
+  const handleUpdateVariant = (index: number, field: keyof ProductVariant, value: any) => {
+    setVariantsList(prev => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: value };
+      return copy;
+    });
+  };
+
+  const handleRemoveVariant = (index: number) => {
+    setVariantsList(prev => prev.filter((_, idx) => idx !== index));
+  };
+
   // Auto-generate display name when brand and model change if not customized
   const handleModelChange = (newModel: string) => {
     setModel(newModel);
@@ -179,6 +227,8 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
     setColorImages({});
     setActiveColorInput('');
     setColorImgUrlInput('');
+    setVariantsList([]);
+    setEnableVariants(false);
     setUploadError(null);
     setIsModalOpen(true);
   };
@@ -195,6 +245,15 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
     setBatteryHealth(p.batteryHealth || '');
     setPrice(p.price ? p.price.toString() : '');
     setOriginalPrice(p.originalPrice ? p.originalPrice.toString() : '');
+    
+    // Load variants if present
+    if (p.variants && Array.isArray(p.variants) && p.variants.length > 0) {
+      setEnableVariants(true);
+      setVariantsList(p.variants.map(v => ({ ...v })));
+    } else {
+      setEnableVariants(false);
+      setVariantsList([]);
+    }
     
     if (STORAGE_OPTIONS.includes(p.storage || '')) {
       setStorage(p.storage || '128GB');
@@ -607,6 +666,28 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
       finalDescription = autoGen.description || `${brand} ${model || name} - Pandey Mobile Store Quality Guarantee`;
     }
 
+    // Validate GB variants if enabled
+    if (enableVariants && variantsList.length > 0) {
+      for (const v of variantsList) {
+        if (!v.storage || !v.storage.trim()) {
+          setFormError('कृपया सबै भेरियन्टको GB स्टोरेज नाम (e.g. 128GB, 256GB) प्रविष्ट गर्नुहोस्।');
+          return;
+        }
+        if (isNaN(v.price) || v.price < 0) {
+          setFormError(`कृपया ${v.storage} भेरियन्टको सही बिक्री मूल्य (NPR) प्रविष्ट गर्नुहोस्।`);
+          return;
+        }
+      }
+    }
+
+    const effectiveBasePrice = (enableVariants && variantsList.length > 0 && variantsList[0].price > 0)
+      ? (numPrice > 0 ? numPrice : variantsList[0].price)
+      : numPrice;
+
+    const effectiveBaseStorage = (enableVariants && variantsList.length > 0)
+      ? variantsList.map(v => v.storage).join(' / ')
+      : finalStorage;
+
     const productPayload = {
       name: name.trim(),
       brand,
@@ -615,12 +696,13 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
       condition,
       conditionGrade: condition === 'New' ? 'Brand New Sealed' : conditionGrade,
       batteryHealth: (condition === 'Used' || condition === 'Pre-Owned') ? batteryHealth.trim() || undefined : undefined,
-      price: numPrice,
+      price: effectiveBasePrice,
       originalPrice: originalPrice.trim() ? parseFloat(originalPrice) : undefined,
       image: primaryImage,
       images: uploadedPhotos.length > 0 ? uploadedPhotos : [primaryImage],
-      storage: finalStorage,
+      storage: effectiveBaseStorage,
       ram: finalRam,
+      variants: (enableVariants && variantsList.length > 0) ? variantsList : undefined,
       color: finalColor,
       colorImages: Object.keys(colorImages).length > 0 ? colorImages : undefined,
       warranty: finalWarranty,
@@ -921,10 +1003,37 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
                       </div>
                     )}
 
+                    {/* GB Storage Variants Badges */}
+                    {prod.variants && prod.variants.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                        <span className="text-[10px] font-bold text-purple-700">GB:</span>
+                        {prod.variants.map((v) => (
+                          <span
+                            key={v.storage}
+                            className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200"
+                            title={`${v.storage}: ${formatNPR(v.price)} (${v.availability || 'In Stock'})`}
+                          >
+                            {v.storage}: {formatNPR(v.price)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
                     {/* Price & Stock display with 1-click status toggle */}
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
                       <div className="flex items-baseline space-x-2">
-                        <span className="text-base font-black text-indigo-700">{formatNPR(prod.price)}</span>
+                        {prod.variants && prod.variants.length > 1 ? (
+                          <div>
+                            <span className="text-base font-black text-indigo-700">
+                              {formatNPR(Math.min(...prod.variants.map(v => v.price)))}
+                            </span>
+                            {Math.min(...prod.variants.map(v => v.price)) !== Math.max(...prod.variants.map(v => v.price)) && (
+                              <span className="text-xs font-semibold text-slate-500"> - {formatNPR(Math.max(...prod.variants.map(v => v.price)))}</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-base font-black text-indigo-700">{formatNPR(prod.price)}</span>
+                        )}
                         {prod.originalPrice && prod.originalPrice > prod.price && (
                           <span className="text-xs text-slate-400 line-through">{formatNPR(prod.originalPrice)}</span>
                         )}
@@ -1678,6 +1787,209 @@ export const QuickProductManager: React.FC<QuickProductManagerProps> = ({
                       placeholder="e.g. 5"
                     />
                   </div>
+                </div>
+
+                {/* GB Storage & Price Variants Section */}
+                <div className="bg-gradient-to-br from-purple-50/80 via-indigo-50/60 to-slate-50 border-2 border-purple-200/90 rounded-2xl p-4 sm:p-5 space-y-4 shadow-xs">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-purple-200/60">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-purple-600/20">
+                        <Layers className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                            GB Storage & Price Variants (स्टोरेज भेरियन्टहरू)
+                          </h4>
+                          {enableVariants && variantsList.length > 0 && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-600 text-white">
+                              {variantsList.length} Active
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-600 mt-0.5">
+                          एउटै फोनका विभिन्न GB क्षमता (उदा: 128GB, 256GB, 512GB, 1TB) र फरक-फरक मूल्यहरू एकैसाथ थप्नुहोस्।
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Toggle Button */}
+                    <label className="flex items-center space-x-2.5 text-xs font-extrabold text-slate-800 cursor-pointer self-start sm:self-auto bg-white px-3.5 py-2 rounded-xl border border-purple-300 shadow-xs hover:border-purple-500 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={enableVariants}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setEnableVariants(checked);
+                          if (checked && variantsList.length === 0) {
+                            const curBaseStorage = storage === 'Other' ? (customStorage || '128GB') : storage;
+                            const curBasePrice = parseFloat(price) || 0;
+                            const curBaseOrig = originalPrice ? parseFloat(originalPrice) : undefined;
+                            setVariantsList([
+                              {
+                                storage: curBaseStorage,
+                                price: curBasePrice,
+                                originalPrice: curBaseOrig,
+                                ram: ram === 'Other' ? (customRam || undefined) : (ram || undefined),
+                                availability: 'In Stock'
+                              }
+                            ]);
+                          }
+                        }}
+                        className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
+                      />
+                      <span>Enable GB Variants</span>
+                    </label>
+                  </div>
+
+                  {enableVariants && (
+                    <div className="space-y-4 pt-1">
+                      {/* Quick Add Preset Buttons */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-[11px] font-bold text-slate-600">Quick Add GB:</span>
+                        {['64GB', '128GB', '256GB', '512GB', '1TB', '2TB'].map((preset) => {
+                          const alreadyAdded = variantsList.some(v => v.storage.toLowerCase() === preset.toLowerCase());
+                          return (
+                            <button
+                              key={preset}
+                              type="button"
+                              onClick={() => handleAddVariantPreset(preset)}
+                              disabled={alreadyAdded}
+                              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                alreadyAdded
+                                  ? 'bg-purple-100 text-purple-400 cursor-not-allowed border border-purple-200 line-through'
+                                  : 'bg-white hover:bg-purple-600 hover:text-white text-purple-700 border border-purple-300 shadow-2xs hover:shadow-xs'
+                              }`}
+                            >
+                              + {preset}
+                            </button>
+                          );
+                        })}
+                        <button
+                          type="button"
+                          onClick={handleAddCustomVariant}
+                          className="px-3 py-1 rounded-lg text-xs font-bold bg-purple-700 hover:bg-purple-800 text-white transition-all cursor-pointer shadow-2xs flex items-center space-x-1"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Custom GB</span>
+                        </button>
+                      </div>
+
+                      {/* Variants List Table / Cards */}
+                      {variantsList.length === 0 ? (
+                        <div className="p-4 bg-white/80 rounded-xl border border-dashed border-purple-300 text-center space-y-1">
+                          <p className="text-xs font-bold text-slate-700">कुनै पनि GB भेरियन्ट थपिएको छैन (No variants added yet)</p>
+                          <p className="text-[11px] text-slate-500">माथिका "+ 128GB", "+ 256GB", "+ 512GB" बटनहरू थिचेर भेरियन्ट थप्नुहोस्।</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-2.5">
+                          {variantsList.map((variant, idx) => (
+                            <div
+                              key={idx}
+                              className="p-3 bg-white rounded-xl border border-purple-200/90 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center gap-3 transition-all hover:border-purple-400"
+                            >
+                              {/* Storage Pill / Input */}
+                              <div className="w-full md:w-36 space-y-1">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                                  Storage *
+                                </label>
+                                <input
+                                  type="text"
+                                  required
+                                  placeholder="e.g. 128GB"
+                                  value={variant.storage}
+                                  onChange={(e) => handleUpdateVariant(idx, 'storage', e.target.value)}
+                                  className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-black text-slate-900 focus:bg-white"
+                                />
+                              </div>
+
+                              {/* Selling Price */}
+                              <div className="w-full md:w-44 space-y-1">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                                  Price (NPR) *
+                                </label>
+                                <div className="relative">
+                                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rs.</span>
+                                  <input
+                                    type="number"
+                                    required
+                                    min="0"
+                                    step="100"
+                                    placeholder="Price in NPR"
+                                    value={variant.price || ''}
+                                    onChange={(e) => handleUpdateVariant(idx, 'price', parseFloat(e.target.value) || 0)}
+                                    className="w-full pl-8 pr-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-indigo-700 focus:bg-white"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Original / MRP Price */}
+                              <div className="w-full md:w-36 space-y-1">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                                  MRP (Optional)
+                                </label>
+                                <div className="relative">
+                                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Rs.</span>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    step="100"
+                                    placeholder="Strike price"
+                                    value={variant.originalPrice || ''}
+                                    onChange={(e) => handleUpdateVariant(idx, 'originalPrice', e.target.value ? parseFloat(e.target.value) : undefined)}
+                                    className="w-full pl-8 pr-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs text-slate-600 focus:bg-white"
+                                  />
+                                </div>
+                              </div>
+
+                              {/* RAM Capacity */}
+                              <div className="w-full md:w-28 space-y-1">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                                  RAM
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g. 8GB"
+                                  value={variant.ram || ''}
+                                  onChange={(e) => handleUpdateVariant(idx, 'ram', e.target.value || undefined)}
+                                  className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-medium text-slate-700 focus:bg-white"
+                                />
+                              </div>
+
+                              {/* Availability */}
+                              <div className="w-full md:w-36 space-y-1">
+                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                                  Status
+                                </label>
+                                <select
+                                  value={variant.availability || 'In Stock'}
+                                  onChange={(e) => handleUpdateVariant(idx, 'availability', e.target.value as ProductAvailability)}
+                                  className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs font-bold text-slate-700 focus:bg-white"
+                                >
+                                  <option value="In Stock">In Stock</option>
+                                  <option value="Limited Stock">Limited Stock</option>
+                                  <option value="Out of Stock">Out of Stock</option>
+                                  <option value="Pre-Order">Pre-Order</option>
+                                </select>
+                              </div>
+
+                              {/* Actions */}
+                              <div className="flex items-center justify-end pt-2 md:pt-4">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveVariant(idx)}
+                                  className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Delete this variant"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Additional Details & Visibility Settings */}

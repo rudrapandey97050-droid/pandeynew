@@ -33,7 +33,6 @@ export type AdminTab =
   | 'rateList'
   | 'repairs'
   | 'sheets'
-  | 'cloudsql'
   | 'qrPayments'
   | 'settings'
   | 'security'

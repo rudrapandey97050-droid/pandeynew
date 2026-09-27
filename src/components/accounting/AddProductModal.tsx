@@ -12,7 +12,7 @@ import {
   Layers,
   Image as ImageIcon
 } from 'lucide-react';
-import { Product, ProductCondition, ProductAvailability } from '../../types.ts';
+import { Product, ProductCondition, ProductAvailability, ProductVariant } from '../../types.ts';
 import { AccountingStorageService } from '../../services/accountingStorage.ts';
 
 interface AddProductModalProps {
@@ -89,6 +89,38 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
   const [description, setDescription] = useState(editingProduct?.description || '');
   const [initialImei, setInitialImei] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  
+  // GB Variants state
+  const [variants, setVariants] = useState<ProductVariant[]>(
+    editingProduct?.variants && Array.isArray(editingProduct.variants) ? editingProduct.variants.map(v => ({ ...v })) : []
+  );
+
+  const handleAddGbVariant = (storagePreset: string) => {
+    if (variants.some(v => v.storage.toLowerCase() === storagePreset.toLowerCase())) return;
+    const baseP = typeof price === 'number' ? price : Number(price) || 0;
+    const baseOrig = originalPrice ? Number(originalPrice) : undefined;
+    setVariants(prev => [
+      ...prev,
+      {
+        storage: storagePreset,
+        price: baseP > 0 ? baseP : 0,
+        originalPrice: baseOrig,
+        availability: 'In Stock'
+      }
+    ]);
+  };
+
+  const handleUpdateGbVariant = (index: number, field: keyof ProductVariant, val: any) => {
+    setVariants(prev => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: val };
+      return copy;
+    });
+  };
+
+  const handleRemoveGbVariant = (index: number) => {
+    setVariants(prev => prev.filter((_, i) => i !== index));
+  };
 
   if (!isOpen) return null;
 
@@ -140,6 +172,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
           batteryHealth: condition !== 'New' ? batteryHealth : undefined,
           storage: storage !== 'N/A' ? storage : undefined,
           ram: ram !== 'N/A' ? ram : undefined,
+          variants: variants.length > 0 ? variants : undefined,
           color: color.trim() || undefined,
           price: finalPrice,
           originalPrice: finalOriginalPrice,
@@ -163,6 +196,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
           batteryHealth: condition !== 'New' ? batteryHealth : undefined,
           storage: storage !== 'N/A' ? storage : undefined,
           ram: ram !== 'N/A' ? ram : undefined,
+          variants: variants.length > 0 ? variants : undefined,
           color: color.trim() || undefined,
           price: finalPrice,
           originalPrice: finalOriginalPrice,
@@ -526,6 +560,79 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
                   className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold"
                 />
               </div>
+            </div>
+
+            {/* GB Storage Variants Section */}
+            <div className="p-4 bg-purple-50/60 border border-purple-200 rounded-2xl space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Layers className="w-4 h-4 text-purple-600" />
+                  <span className="text-xs font-bold text-slate-900">
+                    GB Storage Variants (स्टोरेज भेरियन्टहरू तथा मूल्य)
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {['64GB', '128GB', '256GB', '512GB', '1TB'].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => handleAddGbVariant(preset)}
+                      className="px-2 py-0.5 text-[10px] font-bold bg-white hover:bg-purple-600 hover:text-white text-purple-700 border border-purple-300 rounded-md transition-colors cursor-pointer"
+                    >
+                      + {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {variants.length > 0 ? (
+                <div className="space-y-2">
+                  {variants.map((v, i) => (
+                    <div key={i} className="flex items-center gap-2 bg-white p-2.5 rounded-xl border border-purple-100 shadow-2xs">
+                      <div className="w-24">
+                        <input
+                          type="text"
+                          value={v.storage}
+                          onChange={(e) => handleUpdateGbVariant(i, 'storage', e.target.value)}
+                          placeholder="Storage"
+                          className="w-full px-2 py-1 text-xs font-bold bg-slate-50 border border-slate-200 rounded-lg"
+                        />
+                      </div>
+                      <div className="flex-1 relative">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">Rs.</span>
+                        <input
+                          type="number"
+                          value={v.price || ''}
+                          onChange={(e) => handleUpdateGbVariant(i, 'price', Number(e.target.value) || 0)}
+                          placeholder="Selling Price"
+                          className="w-full pl-7 pr-2 py-1 text-xs font-bold text-indigo-700 bg-slate-50 border border-slate-200 rounded-lg"
+                        />
+                      </div>
+                      <div className="w-28 relative">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">MRP</span>
+                        <input
+                          type="number"
+                          value={v.originalPrice || ''}
+                          onChange={(e) => handleUpdateGbVariant(i, 'originalPrice', e.target.value ? Number(e.target.value) : undefined)}
+                          placeholder="MRP"
+                          className="w-full pl-9 pr-2 py-1 text-xs bg-slate-50 border border-slate-200 rounded-lg"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveGbVariant(i)}
+                        className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[11px] text-slate-500">
+                  यदि यो फोनको धेरै स्टोरेज क्षमता (128GB, 256GB, आदि) छन् भने माथिका बटन थिचेर फरक-फरक मूल्य राख्नुहोस्।
+                </p>
+              )}
             </div>
 
             {!isEditing && (
