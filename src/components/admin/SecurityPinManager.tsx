@@ -15,6 +15,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { AuthService } from '../../services/authService.ts';
+import { AuditLogService } from '../../services/auditService.ts';
 
 interface SecurityPinManagerProps {
   onPinChanged?: () => void;
@@ -89,6 +90,12 @@ export const SecurityPinManager: React.FC<SecurityPinManagerProps> = ({ onPinCha
 
     const res = AuthService.setMasterPin6Digit(cleanNew);
     if (res.success) {
+      AuditLogService.logAction({
+        action: 'MASTER_PIN_CHANGED',
+        category: 'SECURITY',
+        status: 'SUCCESS',
+        details: 'नयाँ ६-अङ्कको मास्टर सुरक्षा पिन सफलतापूर्वक परिवर्तन गरियो (6-Digit Master PIN updated)'
+      });
       setMasterPin6Message({
         type: 'success',
         text: `बधाई छ! नयाँ ६-अङ्कको मास्टर पिन (${cleanNew}) सफलतापूर्वक सुरक्षित भयो। (6-Digit Master PIN updated successfully)`
@@ -99,6 +106,12 @@ export const SecurityPinManager: React.FC<SecurityPinManagerProps> = ({ onPinCha
       onPinChanged?.();
       setTimeout(() => setMasterPin6Message(null), 6000);
     } else {
+      AuditLogService.logAction({
+        action: 'MASTER_PIN_CHANGE_FAILED',
+        category: 'SECURITY',
+        status: 'FAILED',
+        details: `मास्टर पिन परिवर्तन असफल: ${res.message || 'त्रुटि'}`
+      });
       setMasterPin6Message({ type: 'error', text: res.message });
     }
   };
@@ -108,6 +121,12 @@ export const SecurityPinManager: React.FC<SecurityPinManagerProps> = ({ onPinCha
     const res = AuthService.resetMasterPin6DigitToDefault();
     setShowMasterResetConfirm(false);
     if (res.success) {
+      AuditLogService.logAction({
+        action: 'MASTER_PIN_RESET',
+        category: 'SECURITY',
+        status: 'WARNING',
+        details: '६-अङ्कको मास्टर पिन फ्याक्ट्री डिफल्ट (998877) मा रिसेट गरियो (Reset to factory default)'
+      });
       setMasterPin6Message({
         type: 'success',
         text: '६-अङ्कको मास्टर पिन फ्याक्ट्री डिफल्ट (998877) मा रिसेट गरियो।'
@@ -185,11 +204,23 @@ export const SecurityPinManager: React.FC<SecurityPinManagerProps> = ({ onPinCha
 
     const res = AuthService.setCustomPassword(cleanPass);
     if (res.success) {
+      AuditLogService.logAction({
+        action: 'ADMIN_PASSWORD_CHANGED',
+        category: 'SECURITY',
+        status: 'SUCCESS',
+        details: 'व्यवस्थापक लगइन पासवर्ड सफलतापूर्वक अद्यावधिक गरियो (Admin password updated)'
+      });
       setPasswordMessage({ type: 'success', text: 'Admin login password updated successfully!' });
       setNewPassword('');
       setConfirmPassword('');
       setTimeout(() => setPasswordMessage(null), 5000);
     } else {
+      AuditLogService.logAction({
+        action: 'ADMIN_PASSWORD_CHANGE_FAILED',
+        category: 'SECURITY',
+        status: 'FAILED',
+        details: `पासवर्ड परिवर्तन असफल: ${res.message || 'त्रुटि'}`
+      });
       setPasswordMessage({ type: 'error', text: res.message });
     }
   };

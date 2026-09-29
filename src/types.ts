@@ -463,4 +463,21 @@ export interface CustomerReview {
   replyDate?: string;
 }
 
+export type AuditLogCategory = 'AUTH' | 'PRODUCT' | 'SECURITY' | 'SETTINGS' | 'SYSTEM' | 'REPAIR' | 'VALUATION';
+
+export type AuditLogStatus = 'SUCCESS' | 'FAILED' | 'WARNING';
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string; // ISO string
+  action: string;
+  category: AuditLogCategory;
+  userName: string;
+  role: string;
+  ipOrDevice?: string;
+  status: AuditLogStatus;
+  details: string;
+  metadata?: Record<string, any>;
+}
+
 

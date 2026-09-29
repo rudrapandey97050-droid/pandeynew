@@ -23,6 +23,7 @@ import { initialUpcomingModels, initialPopupSettings } from '../data/upcomingMod
 import { initialCustomerReviews } from '../data/initialReviews.ts';
 import { initialPaymentQRs } from '../data/initialPaymentQRs.ts';
 import { FirestoreService } from './firestoreService.ts';
+import { AuditLogService } from './auditService.ts';
 
 const STORAGE_KEYS = {
   PRODUCTS: 'pms_products_v2',
@@ -253,6 +254,16 @@ export class DataStorageService {
     products.unshift(newProduct);
     this.saveProducts(products);
     FirestoreService.saveProduct(newProduct).catch(() => {});
+
+    // Security Audit Log
+    AuditLogService.logAction({
+      action: 'PRODUCT_ADD',
+      category: 'PRODUCT',
+      status: 'SUCCESS',
+      details: `नयाँ उत्पादन थपियो: ${newProduct.name} (मूल्य: रु ${Number(newProduct.price || 0).toLocaleString('ne-NP')})`,
+      metadata: { productId: newProduct.id, brand: newProduct.brand, price: newProduct.price }
+    });
+
     return newProduct;
   }
 
@@ -269,15 +280,37 @@ export class DataStorageService {
     products[index] = updated;
     this.saveProducts(products);
     FirestoreService.saveProduct(updated).catch(() => {});
+
+    // Security Audit Log (skip minor internal touch if needed, otherwise record)
+    const updateKeys = Object.keys(updates).filter(k => k !== 'updatedAt').join(', ');
+    AuditLogService.logAction({
+      action: 'PRODUCT_EDIT',
+      category: 'PRODUCT',
+      status: 'SUCCESS',
+      details: `उत्पादन सम्पादन गरियो: ${updated.name}${updates.price !== undefined ? ` (नयाँ मूल्य: रु ${Number(updates.price).toLocaleString('ne-NP')})` : ''}`,
+      metadata: { productId: updated.id, updatedFields: updateKeys }
+    });
+
     return updated;
   }
 
   static deleteProduct(id: string): boolean {
     const products = this.getProducts();
+    const target = products.find(p => p.id === id);
     const filtered = products.filter(p => p.id !== id);
     if (filtered.length === products.length) return false;
     this.saveProducts(filtered);
     FirestoreService.deleteProduct(id).catch(() => {});
+
+    // Security Audit Log
+    AuditLogService.logAction({
+      action: 'PRODUCT_DELETE',
+      category: 'PRODUCT',
+      status: 'WARNING',
+      details: `उत्पादन क्याटलगबाट मेटाइयो: ${target ? target.name : id}`,
+      metadata: { productId: id }
+    });
+
     return true;
   }
 

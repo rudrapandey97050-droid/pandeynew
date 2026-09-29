@@ -23,13 +23,15 @@ import {
   Database,
   Users,
   QrCode,
-  HardDrive
+  HardDrive,
+  Activity
 } from 'lucide-react';
 import { Product, RateListItem, RepairBooking, PhoneValuationRequest, StoreSettings, StoreUserPermissions } from '../types.ts';
 import { AuthService } from '../services/authService.ts';
 import { UserService, DEFAULT_ADMIN_PERMISSIONS } from '../services/userService.ts';
 import { DataStorageService } from '../services/dataStorage.ts';
 import { FirestoreService } from '../services/firestoreService.ts';
+import { AuditLogService } from '../services/auditService.ts';
 import { ValuationsManager } from './admin/ValuationsManager.tsx';
 import { QuickProductManager } from './QuickProductManager.tsx';
 import { ExcelPriceListManager } from './admin/ExcelPriceListManager.tsx';
@@ -43,6 +45,7 @@ import { GoogleSheetsManager } from './admin/GoogleSheetsManager.tsx';
 import { QuickActions } from './admin/QuickActions.tsx';
 import { AccountingPlatform } from './accounting/AccountingPlatform.tsx';
 import { QRPaymentsManager } from './admin/QRPaymentsManager.tsx';
+import { AuditLogManager } from './admin/AuditLogManager.tsx';
 
 interface AdminPanelProps {
   onBackToStore: () => void;
@@ -56,7 +59,7 @@ interface AdminPanelProps {
   onNavigateToAccounting?: () => void;
 }
 
-type AdminTab = 'valuations' | 'upcoming' | 'products' | 'lineup' | 'rateList' | 'repairs' | 'sheets' | 'qrPayments' | 'settings' | 'security' | 'users';
+type AdminTab = 'valuations' | 'upcoming' | 'products' | 'lineup' | 'rateList' | 'repairs' | 'sheets' | 'qrPayments' | 'settings' | 'security' | 'users' | 'auditLogs';
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
   onBackToStore,
@@ -106,6 +109,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       case 'security':
       case 'users':
         return !!permissions.canManageUsers;
+      case 'auditLogs':
+        return isPrimaryAdmin || !!permissions.canManageUsers || !!permissions.canManageSettings;
       default:
         return false;
     }
@@ -122,7 +127,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     'qrPayments',
     'settings',
     'users',
-    'security'
+    'security',
+    'auditLogs'
   ];
 
   // Auto-switch to the first permitted tab if activeTab is not allowed
@@ -161,6 +167,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   const handleLogout = async () => {
+    AuditLogService.logAction({
+      action: 'ADMIN_LOGOUT',
+      category: 'AUTH',
+      userName: activeUser?.name || session?.name || session?.email || 'Store Admin',
+      role: activeUser?.role || session?.role || 'Admin',
+      status: 'SUCCESS',
+      details: 'व्यवस्थापक सत्र सफलतापूर्वक समाप्त गरियो (Admin signed out)'
+    });
     await AuthService.logout();
     onLogout();
   };
@@ -453,6 +467,28 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </button>
           )}
 
+          {/* Audit Logs & Security Monitoring */}
+          {isTabAllowed('auditLogs') && (
+            <button
+              id="admin-nav-audit-logs-btn"
+              onClick={() => setActiveTab('auditLogs')}
+              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                activeTab === 'auditLogs'
+                  ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
+                  : 'text-slate-300 hover:bg-slate-900 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center space-x-2.5">
+                <ShieldAlert className="w-4 h-4 text-rose-400" />
+                <span>Audit Logs & Security</span>
+              </div>
+              <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/30 font-bold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span>
+                <span>Audit</span>
+              </span>
+            </button>
+          )}
+
           {/* SEPARATE ACCOUNTING PLATFORM - LOGICALLY DISTINCT ERP MODULE */}
           {canAccessAccounting && (
             <div className="pt-3 mt-3 border-t border-slate-800">
@@ -529,6 +565,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               {activeTab === 'settings' && 'Web Settings, Full Backup & Data Restore'}
               {activeTab === 'security' && 'Admin Security & 4-Digit PIN Reset'}
               {activeTab === 'users' && 'User & Staff Management (Role Permissions)'}
+              {activeTab === 'auditLogs' && 'प्रशासनिक सुरक्षा अडिट लग (Security Audit Logs & Activity Trail)'}
             </h1>
             <p className="text-xs text-slate-500">
               Traffic Chowk, Butwal, Nepal • Store Administration Console
@@ -701,6 +738,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               {activeTab === 'users' && (
                 <UserManager
                   onUserSwitched={onDataRefresh}
+                />
+              )}
+
+              {activeTab === 'auditLogs' && (
+                <AuditLogManager
+                  onRefreshParent={onDataRefresh}
                 />
               )}
             </>

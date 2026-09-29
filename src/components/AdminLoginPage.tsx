@@ -11,6 +11,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { AuthService } from '../services/authService.ts';
+import { AuditLogService } from '../services/auditService.ts';
 
 interface AdminLoginPageProps {
   onLoginSuccess: () => void;
@@ -59,15 +60,39 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
       setIsLoading(false);
 
       if (result.success) {
+        AuditLogService.logAction({
+          action: 'LOGIN_SUCCESS',
+          category: 'AUTH',
+          userName: cleanInput,
+          role: result.session?.role || 'Admin',
+          status: 'SUCCESS',
+          details: `व्यवस्थापक पोर्टलमा सफलतापूर्वक लगइन भयो (${cleanInput})`
+        });
         setSuccessMessage('सफलतापूर्वक प्रमाणीकरण भयो। एडमिन प्यानल खुल्दैछ...');
         setTimeout(() => {
           onLoginSuccess();
         }, 350);
       } else {
+        AuditLogService.logAction({
+          action: 'LOGIN_FAILED',
+          category: 'AUTH',
+          userName: cleanInput,
+          role: 'Unknown',
+          status: 'FAILED',
+          details: `लगइन प्रमाणीकरण असफल (${cleanInput}): ${result.message || 'गलत पासवर्ड वा पिन'}`
+        });
         setErrorMessage(result.message || 'प्रमाणीकरण असफल भयो। कृपया आफ्नो विवरण जाँच गर्नुहोस्।');
       }
     } catch {
       setIsLoading(false);
+      AuditLogService.logAction({
+        action: 'LOGIN_ERROR',
+        category: 'AUTH',
+        userName: cleanInput,
+        role: 'Unknown',
+        status: 'FAILED',
+        details: `लगइन सेवा त्रुटि (${cleanInput})`
+      });
       setErrorMessage('लगइन सेवामा समस्या आयो। कृपया पुनः प्रयास गर्नुहोस्।');
     }
   };
