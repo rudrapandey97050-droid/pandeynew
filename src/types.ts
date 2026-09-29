@@ -463,7 +463,7 @@ export interface CustomerReview {
   replyDate?: string;
 }
 
-export type AuditLogCategory = 'AUTH' | 'PRODUCT' | 'SECURITY' | 'SETTINGS' | 'SYSTEM' | 'REPAIR' | 'VALUATION';
+export type AuditLogCategory = 'AUTH' | 'PRODUCT' | 'SECURITY' | 'SETTINGS' | 'SYSTEM' | 'REPAIR' | 'VALUATION' | 'USER_MGMT';
 
 export type AuditLogStatus = 'SUCCESS' | 'FAILED' | 'WARNING';
 

@@ -38,10 +38,8 @@ import { ExcelPriceListManager } from './admin/ExcelPriceListManager.tsx';
 import { RepairBookingsManager } from './admin/RepairBookingsManager.tsx';
 import { StoreSettingsManager } from './admin/StoreSettingsManager.tsx';
 import { UpcomingModelsManager } from './admin/UpcomingModelsManager.tsx';
-import { SecurityPinManager } from './admin/SecurityPinManager.tsx';
 import { UserManager } from './admin/UserManager.tsx';
 import { LineupManager } from './admin/LineupManager.tsx';
-import { GoogleSheetsManager } from './admin/GoogleSheetsManager.tsx';
 import { QuickActions } from './admin/QuickActions.tsx';
 import { AccountingPlatform } from './accounting/AccountingPlatform.tsx';
 import { QRPaymentsManager } from './admin/QRPaymentsManager.tsx';
@@ -59,7 +57,7 @@ interface AdminPanelProps {
   onNavigateToAccounting?: () => void;
 }
 
-type AdminTab = 'valuations' | 'upcoming' | 'products' | 'lineup' | 'rateList' | 'repairs' | 'sheets' | 'qrPayments' | 'settings' | 'security' | 'users' | 'auditLogs';
+type AdminTab = 'valuations' | 'upcoming' | 'products' | 'lineup' | 'rateList' | 'repairs' | 'qrPayments' | 'settings' | 'security' | 'users' | 'auditLogs';
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({
   onBackToStore,
@@ -102,7 +100,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         return !!permissions.canManageRateList;
       case 'repairs':
         return !!permissions.canManageRepairs;
-      case 'sheets':
       case 'qrPayments':
       case 'settings':
         return !!permissions.canManageSettings;
@@ -123,11 +120,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
     'products',
     'upcoming',
     'lineup',
-    'sheets',
     'qrPayments',
     'settings',
     'users',
-    'security',
     'auditLogs'
   ];
 
@@ -367,28 +362,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </button>
           )}
 
-          {/* Google Sheets Integration */}
-          {isTabAllowed('sheets') && (
-            <button
-              onClick={() => setActiveTab('sheets')}
-              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                activeTab === 'sheets'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                  : 'text-slate-300 hover:bg-slate-900 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center space-x-2.5">
-                <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-                <span>Google Sheets Sync</span>
-              </div>
-              <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
-                Live API
-              </span>
-            </button>
-          )}
-
-
-
           {/* QR Payment Codes & Storefront Display */}
           {isTabAllowed('qrPayments') && (
             <button
@@ -427,42 +400,23 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             </button>
           )}
 
-          {/* Admin Security & PIN Reset */}
-          {isTabAllowed('security') && (
-            <button
-              onClick={() => setActiveTab('security')}
-              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                activeTab === 'security'
-                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                  : 'text-slate-300 hover:bg-slate-900 hover:text-white'
-              }`}
-            >
-              <div className="flex items-center space-x-2.5">
-                <Lock className="w-4 h-4 text-amber-400" />
-                <span>Admin PIN & Security</span>
-              </div>
-              <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-amber-400/20 text-amber-300 border border-amber-400/30 font-mono font-bold">
-                PIN
-              </span>
-            </button>
-          )}
-
-          {/* User & Staff Management (Admin + Secondary Users) */}
+          {/* User, Staff & Admin Security (Admin + Secondary Users + PIN Security) */}
           {isTabAllowed('users') && (
             <button
+              id="admin-nav-users-btn"
               onClick={() => setActiveTab('users')}
               className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                activeTab === 'users'
+                activeTab === 'users' || activeTab === 'security'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                   : 'text-slate-300 hover:bg-slate-900 hover:text-white'
               }`}
             >
               <div className="flex items-center space-x-2.5">
                 <Users className="w-4 h-4 text-indigo-400" />
-                <span>User & Staff Admin</span>
+                <span>User & Admin Security</span>
               </div>
               <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold">
-                Admin + Sec
+                Admin + PIN
               </span>
             </button>
           )}
@@ -560,11 +514,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               {activeTab === 'lineup' && 'Lineup Showcase Manager'}
               {activeTab === 'rateList' && 'Used iPhone & Market Rate Sheet'}
               {activeTab === 'repairs' && 'Repair Service Appointments'}
-              {activeTab === 'sheets' && 'Google Sheets Live Sync'}
               {activeTab === 'qrPayments' && 'Store Payment QR Codes & Storefront Display'}
               {activeTab === 'settings' && 'Web Settings, Full Backup & Data Restore'}
-              {activeTab === 'security' && 'Admin Security & 4-Digit PIN Reset'}
-              {activeTab === 'users' && 'User & Staff Management (Role Permissions)'}
+              {(activeTab === 'users' || activeTab === 'security') && 'User, Staff & Admin Security Console (प्रयोगकर्ता तथा सुरक्षा व्यवस्थापन)'}
               {activeTab === 'auditLogs' && 'प्रशासनिक सुरक्षा अडिट लग (Security Audit Logs & Activity Trail)'}
             </h1>
             <p className="text-xs text-slate-500">
@@ -706,15 +658,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 />
               )}
 
-              {activeTab === 'sheets' && (
-                <GoogleSheetsManager
-                  rateList={rateList}
-                  valuations={valuations}
-                  bookings={bookings}
-                  onDataRefresh={onDataRefresh}
-                />
-              )}
-
               {activeTab === 'qrPayments' && (
                 <QRPaymentsManager
                   storeSettings={storeSettings}
@@ -729,15 +672,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 />
               )}
 
-              {activeTab === 'security' && (
-                <SecurityPinManager
-                  onPinChanged={onDataRefresh}
-                />
-              )}
-
-              {activeTab === 'users' && (
+              {(activeTab === 'users' || activeTab === 'security') && (
                 <UserManager
                   onUserSwitched={onDataRefresh}
+                  onPinChanged={onDataRefresh}
+                  initialSubTab={activeTab === 'security' ? 'security' : 'users'}
                 />
               )}
 

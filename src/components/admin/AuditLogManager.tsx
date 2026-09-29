@@ -153,6 +153,9 @@ export const AuditLogManager: React.FC<AuditLogManagerProps> = ({ onRefreshParen
     } else if (action.includes('SETTINGS') || action.includes('BACKUP')) {
       icon = <Settings className="w-3.5 h-3.5 text-blue-600" />;
       bg = 'bg-blue-50 text-blue-700 border-blue-200';
+    } else if (category === 'USER_MGMT' || action.includes('USER')) {
+      icon = <User className="w-3.5 h-3.5 text-indigo-600" />;
+      bg = 'bg-indigo-50 text-indigo-700 border-indigo-200';
     }
 
     return (
@@ -388,6 +391,7 @@ export const AuditLogManager: React.FC<AuditLogManagerProps> = ({ onRefreshParen
                 <option value="AUTH">Authentication (लगइन)</option>
                 <option value="PRODUCT">Products (उत्पादन)</option>
                 <option value="SECURITY">Security & PIN (सुरक्षा)</option>
+                <option value="USER_MGMT">Staff & Users (कर्मचारी व्यवस्थापन)</option>
                 <option value="SETTINGS">Settings & Backup (सेटिङ्स)</option>
               </select>
             </div>

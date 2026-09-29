@@ -32,11 +32,11 @@ export type AdminTab =
   | 'lineup'
   | 'rateList'
   | 'repairs'
-  | 'sheets'
   | 'qrPayments'
   | 'settings'
   | 'security'
-  | 'users';
+  | 'users'
+  | 'auditLogs';
 
 interface QuickActionsProps {
   products: Product[];
