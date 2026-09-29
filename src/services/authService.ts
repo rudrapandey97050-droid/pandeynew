@@ -77,6 +77,14 @@ export class AuthService {
       if (savedPin && /^\d{6}$/.test(savedPin)) {
         return savedPin;
       }
+      // Check synced store settings
+      const settingsRaw = localStorage.getItem('pms_store_settings_v2');
+      if (settingsRaw) {
+        const parsed = JSON.parse(settingsRaw);
+        if (parsed.masterPin6Digit && /^\d{6}$/.test(parsed.masterPin6Digit)) {
+          return parsed.masterPin6Digit;
+        }
+      }
     } catch {
       // ignore
     }
@@ -89,14 +97,25 @@ export class AuthService {
   static isMasterPin6DigitSet(): boolean {
     try {
       const savedPin = localStorage.getItem(CUSTOM_MASTER_PIN_6DIGIT_KEY);
-      return !!savedPin && savedPin !== DEFAULT_FACTORY_MASTER_PIN_6DIGIT;
+      if (savedPin && savedPin !== DEFAULT_FACTORY_MASTER_PIN_6DIGIT && /^\d{6}$/.test(savedPin)) {
+        return true;
+      }
+      const settingsRaw = localStorage.getItem('pms_store_settings_v2');
+      if (settingsRaw) {
+        const parsed = JSON.parse(settingsRaw);
+        if (parsed.masterPin6Digit && parsed.masterPin6Digit !== DEFAULT_FACTORY_MASTER_PIN_6DIGIT && /^\d{6}$/.test(parsed.masterPin6Digit)) {
+          return true;
+        }
+      }
     } catch {
-      return false;
+      // ignore
     }
+    return false;
   }
 
   /**
    * Set new 6-digit Master Security PIN
+   * Once set, ALL previous codes (including default 998877) are invalidated!
    */
   static setMasterPin6Digit(newPin: string): { success: boolean; message: string } {
     const cleanPin = newPin.trim();
@@ -108,10 +127,38 @@ export class AuthService {
     }
     try {
       localStorage.setItem(CUSTOM_MASTER_PIN_6DIGIT_KEY, cleanPin);
-      // Synchronize 4-digit fallback as well
       localStorage.setItem(CUSTOM_PIN_STORAGE_KEY, cleanPin.substring(0, 4));
 
-      // Synchronize with server if online
+      // Persist to store settings
+      try {
+        const settingsRaw = localStorage.getItem('pms_store_settings_v2');
+        if (settingsRaw) {
+          const parsed = JSON.parse(settingsRaw);
+          parsed.masterPin6Digit = cleanPin;
+          localStorage.setItem('pms_store_settings_v2', JSON.stringify(parsed));
+        }
+      } catch {
+        // ignore
+      }
+
+      // Synchronize with store users
+      try {
+        const usersRaw = localStorage.getItem('pms_store_users_v2');
+        if (usersRaw) {
+          const parsed = JSON.parse(usersRaw);
+          if (Array.isArray(parsed)) {
+            const adminUser = parsed.find((u: any) => u.isPrimaryAdmin);
+            if (adminUser) {
+              adminUser.pin = cleanPin.substring(0, 4);
+              localStorage.setItem('pms_store_users_v2', JSON.stringify(parsed));
+            }
+          }
+        }
+      } catch {
+        // ignore
+      }
+
+      // Synchronize with server if reachable
       fetch('/api/auth/set-master-pin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -120,7 +167,7 @@ export class AuthService {
 
       return {
         success: true,
-        message: `६-अङ्कको नयाँ मास्टर पिन (${cleanPin}) सफलतापूर्वक सुरक्षित भयो। अब यो नयाँ कोडबाट मात्र खुल्नेछ, पुराना कोडहरू रद्द गरिए!`
+        message: `६-अङ्कको नयाँ मास्टर पिन (${cleanPin}) सफलतापूर्वक सुरक्षित भयो। अब यो नयाँ कोडबाट मात्र खुल्नेछ, पुराना कोडहरू पूर्ण रूपमा रद्द गरिए!`
       };
     } catch {
       return {
@@ -136,11 +183,23 @@ export class AuthService {
   static resetMasterPin6DigitToDefault(): { success: boolean; message: string } {
     try {
       localStorage.removeItem(CUSTOM_MASTER_PIN_6DIGIT_KEY);
+      try {
+        const settingsRaw = localStorage.getItem('pms_store_settings_v2');
+        if (settingsRaw) {
+          const parsed = JSON.parse(settingsRaw);
+          delete parsed.masterPin6Digit;
+          localStorage.setItem('pms_store_settings_v2', JSON.stringify(parsed));
+        }
+      } catch {
+        // ignore
+      }
+
       fetch('/api/auth/set-master-pin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pin: DEFAULT_FACTORY_MASTER_PIN_6DIGIT })
       }).catch(() => null);
+
       return {
         success: true,
         message: `६-अङ्कको मास्टर पिन पूर्वनिर्धारित मान (${DEFAULT_FACTORY_MASTER_PIN_6DIGIT}) मा रिसेट भयो।`
@@ -302,10 +361,28 @@ export class AuthService {
    */
   static getCustomPassword(): string | null {
     try {
-      return localStorage.getItem(CUSTOM_PASS_STORAGE_KEY);
+      const saved = localStorage.getItem(CUSTOM_PASS_STORAGE_KEY);
+      if (saved && saved.trim()) return saved.trim();
+
+      const settingsRaw = localStorage.getItem('pms_store_settings_v2');
+      if (settingsRaw) {
+        const parsed = JSON.parse(settingsRaw);
+        if (parsed.adminPassword && parsed.adminPassword.trim()) {
+          return parsed.adminPassword.trim();
+        }
+      }
     } catch {
-      return null;
+      // ignore
     }
+    return null;
+  }
+
+  /**
+   * Check if custom admin password is set
+   */
+  static isCustomPasswordSet(): boolean {
+    const pass = this.getCustomPassword();
+    return !!pass && pass.length >= 4;
   }
 
   /**
@@ -321,9 +398,46 @@ export class AuthService {
     }
     try {
       localStorage.setItem(CUSTOM_PASS_STORAGE_KEY, trimmed);
+
+      // Persist to store settings
+      try {
+        const settingsRaw = localStorage.getItem('pms_store_settings_v2');
+        if (settingsRaw) {
+          const parsed = JSON.parse(settingsRaw);
+          parsed.adminPassword = trimmed;
+          localStorage.setItem('pms_store_settings_v2', JSON.stringify(parsed));
+        }
+      } catch {
+        // ignore
+      }
+
+      // Synchronize with store users
+      try {
+        const usersRaw = localStorage.getItem('pms_store_users_v2');
+        if (usersRaw) {
+          const parsed = JSON.parse(usersRaw);
+          if (Array.isArray(parsed)) {
+            const adminUser = parsed.find((u: any) => u.isPrimaryAdmin);
+            if (adminUser) {
+              adminUser.password = trimmed;
+              localStorage.setItem('pms_store_users_v2', JSON.stringify(parsed));
+            }
+          }
+        }
+      } catch {
+        // ignore
+      }
+
+      // Synchronize with server if reachable
+      fetch('/api/auth/set-admin-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: trimmed })
+      }).catch(() => null);
+
       return {
         success: true,
-        message: 'Admin password updated successfully.'
+        message: 'Admin password updated successfully. Old passwords have been revoked!'
       };
     } catch {
       return {
@@ -532,10 +646,9 @@ export class AuthService {
 
           return {
             success: true,
-            message: data.message || '६-अङ्कको ओटिपी तयार गरियो।',
+            message: data.message || '६-अङ्कको सुरक्षा कोड अधिकृत जिमेलमा पठाइयो।',
             sentViaSmtp: data.sentViaSmtp,
-            email: cleanEmail,
-            otpCode: data.otpCode || (!data.sentViaSmtp ? localOtp : undefined)
+            email: cleanEmail
           };
         } else {
           return {
@@ -544,24 +657,21 @@ export class AuthService {
           };
         }
       } else {
-        // Static hosting fallback (e.g., Cloudflare Pages without backend)
+        // Static hosting fallback notice
         return {
           success: true,
-          message: '६-अङ्कको सुरक्षा ओटिपी तयार गरियो।',
+          message: '६-अङ्कको सुरक्षा कोड अनुरोध भयो। तपाईंको जिमेलमा आएको कोड वा ६-अङ्कको मास्टर सुरक्षा पिन प्रविष्ट गर्नुहोस्।',
           sentViaSmtp: false,
-          email: cleanEmail,
-          otpCode: localOtp
+          email: cleanEmail
         };
       }
     } catch (err: any) {
       console.warn('sendGmailOtp server bypass fallback:', err?.message || err);
-      // Seamless client-side fallback
       return {
         success: true,
-        message: '६-अङ्कको सुरक्षा ओटिपी तयार गरियो।',
+        message: '६-अङ्कको सुरक्षा कोड अनुरोध भयो। तपाईंको जिमेलमा आएको कोड वा ६-अङ्कको मास्टर सुरक्षा पिन प्रविष्ट गर्नुहोस्।',
         sentViaSmtp: false,
-        email: cleanEmail,
-        otpCode: localOtp
+        email: cleanEmail
       };
     }
   }
@@ -604,10 +714,12 @@ export class AuthService {
     const activeMasterPin = this.getMasterPin6Digit();
     const isMasterCustomSet = this.isMasterPin6DigitSet();
     const customPass = this.getCustomPassword();
+    const isPassCustomSet = this.isCustomPasswordSet();
 
-    // 1. Password check: custom password or default "pandey123"
+    // 1. Password check:
     let matches = false;
-    if (customPass) {
+    if (isPassCustomSet && customPass) {
+      // ONLY the latest custom password is valid! Old default 'pandey123' is strictly rejected.
       matches = cleanPass === customPass;
     } else {
       matches = cleanPass === 'pandey123';
@@ -617,16 +729,16 @@ export class AuthService {
     // If a custom master PIN has been set, the old default (998877) or previous PINs are strictly rejected!
     if (!matches) {
       if (isMasterCustomSet) {
-        matches = cleanPass === activeMasterPin;
+        matches = cleanPass === activeMasterPin || cleanPass === this.getCustomPin();
       } else {
-        matches = cleanPass === DEFAULT_FACTORY_MASTER_PIN_6DIGIT;
+        matches = cleanPass === DEFAULT_FACTORY_MASTER_PIN_6DIGIT || cleanPass === DEFAULT_FACTORY_PIN;
       }
     }
 
     if (!matches) {
       return {
         success: false,
-        message: 'गलत पासवर्ड वा मास्टर पिन! कृपया हालको सक्रिय विवरण प्रविष्ट गर्नुहोस्।'
+        message: 'गलत पासवर्ड वा मास्टर सुरक्षा पिन! कृपया हालको सक्रिय विवरण प्रविष्ट गर्नुहोस्।'
       };
     }
 
@@ -635,7 +747,7 @@ export class AuthService {
       await fetch('/api/auth/login-direct', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ account: cleanAcc, password: cleanPass, activeMasterPin })
+        body: JSON.stringify({ account: cleanAcc, password: cleanPass, activeMasterPin, isMasterCustomSet })
       }).catch(() => null);
     } catch {
       // offline ok
@@ -818,7 +930,7 @@ export class AuthService {
       const response = await fetch('/api/auth/verify-gmail-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: cleanEmail, otp: cleanOtp, activeMasterPin })
+        body: JSON.stringify({ email: cleanEmail, otp: cleanOtp, activeMasterPin, isMasterCustomSet })
       });
 
       if (response.ok) {

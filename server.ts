@@ -68,12 +68,30 @@ async function startServer() {
   // ==========================================
   const OTP_CACHE_FILE = "/tmp/pms_active_otps.json";
   const MASTER_PIN_FILE = "/tmp/pms_master_pin.json";
+  const ADMIN_PASSWORD_FILE = "/tmp/pms_admin_password.json";
   let serverActiveMasterPin = "998877";
+  let serverIsMasterPinCustomSet = false;
+  let serverActivePassword = "pandey123";
+  let serverIsPasswordCustomSet = false;
+
   try {
     if (fs.existsSync(MASTER_PIN_FILE)) {
       const parsed = JSON.parse(fs.readFileSync(MASTER_PIN_FILE, "utf-8"));
       if (parsed && parsed.pin && /^\d{6}$/.test(parsed.pin)) {
         serverActiveMasterPin = parsed.pin;
+        serverIsMasterPinCustomSet = (parsed.pin !== "998877");
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    if (fs.existsSync(ADMIN_PASSWORD_FILE)) {
+      const parsed = JSON.parse(fs.readFileSync(ADMIN_PASSWORD_FILE, "utf-8"));
+      if (parsed && parsed.password && typeof parsed.password === "string" && parsed.password.length >= 4) {
+        serverActivePassword = parsed.password;
+        serverIsPasswordCustomSet = true;
       }
     }
   } catch {
@@ -274,10 +292,9 @@ async function startServer() {
         success: true,
         sentViaSmtp,
         deliveryDetail,
-        otpCode: !sentViaSmtp ? generatedOtp : undefined,
         message: sentViaSmtp
-          ? "६-अङ्कको ओटिपी तपाईंको जिमेलमा पठाइएको छ। कृपया आफ्नो इनबक्स वा स्पाम (Spam) फोल्डर जाँच गर्नुहोस् वा मास्टर पिन ९९८८७७ प्रयोग गर्नुहोस्।"
-          : "६-अङ्कको सुरक्षा ओटिपी तयार गरियो।",
+          ? "६-अङ्कको ओटिपी तपाईंको जिमेलमा पठाइएको छ। कृपया आफ्नो इनबक्स वा स्पाम (Spam) फोल्डर जाँच गर्नुहोस् वा आफ्नो मास्टर सुरक्षा पिन प्रयोग गर्नुहोस्।"
+          : "६-अङ्कको सुरक्षा कोड अनुरोध भयो। तपाईंको जिमेलमा आएको कोड वा ६-अङ्कको मास्टर सुरक्षा पिन प्रविष्ट गर्नुहोस्।",
         expiresInMinutes: 10
       });
     } catch (err: any) {
@@ -295,11 +312,14 @@ async function startServer() {
       const cleanPin = normalizeOtpDigits(typeof pin === "string" ? pin : "");
       if (cleanPin && cleanPin.length === 6) {
         serverActiveMasterPin = cleanPin;
+        serverIsMasterPinCustomSet = (cleanPin !== "998877");
         try {
           fs.writeFileSync(MASTER_PIN_FILE, JSON.stringify({ pin: cleanPin }), "utf-8");
         } catch {
           // ignore
         }
+        // Invalidate verified session caches so old credentials cannot piggyback
+        recentlyVerifiedSessions.clear();
         return res.json({ success: true, message: "Master PIN updated successfully", pin: cleanPin });
       }
       return res.status(400).json({ success: false, message: "Master PIN must be exactly 6 numeric digits" });
@@ -308,17 +328,40 @@ async function startServer() {
     }
   });
 
-  // Direct login with password or Master PIN (Bypasses email delivery issues)
+  // Set / Update Admin Password on server
+  app.post("/api/auth/set-admin-password", (req, res) => {
+    try {
+      const { password } = req.body || {};
+      const cleanPass = (typeof password === "string" ? password : "").trim();
+      if (cleanPass && cleanPass.length >= 4) {
+        serverActivePassword = cleanPass;
+        serverIsPasswordCustomSet = true;
+        try {
+          fs.writeFileSync(ADMIN_PASSWORD_FILE, JSON.stringify({ password: cleanPass }), "utf-8");
+        } catch {
+          // ignore
+        }
+        // Invalidate verified session caches
+        recentlyVerifiedSessions.clear();
+        return res.json({ success: true, message: "Admin password updated successfully" });
+      }
+      return res.status(400).json({ success: false, message: "Password must be at least 4 characters" });
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message || "Failed to update admin password" });
+    }
+  });
+
+  // Direct login with password or Master PIN
   app.post("/api/auth/login-direct", (req, res) => {
     try {
-      const { account = "", password = "", activeMasterPin = "" } = req.body || {};
+      const { account = "", password = "", activeMasterPin = "", isMasterCustomSet = false } = req.body || {};
       const cleanAcc = (typeof account === "string" ? account : "").trim().toLowerCase();
       const cleanPass = (typeof password === "string" ? password : "").trim();
 
       if (!cleanAcc || !cleanPass) {
         return res.status(400).json({
           success: false,
-          message: "कृपया खाता नाम र पासवर्ड प्रविष्ट गर्नुहोस्।"
+          message: "कृपया खाता नाम र पासवर्ड वा मास्टर पिन प्रविष्ट गर्नुहोस्।"
         });
       }
 
@@ -330,19 +373,40 @@ async function startServer() {
         cleanAcc === "pmesbutwal@gmail.com" ||
         cleanAcc.startsWith("admin");
 
+      if (!isAuthorizedUser) {
+        return res.status(403).json({
+          success: false,
+          message: "यो खाता पसलको आधिकारिक एडमिनको रूपमा दर्ता छैन।"
+        });
+      }
+
       const currentMaster = (typeof activeMasterPin === "string" && activeMasterPin.length === 6) 
         ? activeMasterPin 
         : serverActiveMasterPin;
 
-      // Only allow admin password or the active latest master PIN
-      const isMasterPinMatch = cleanPass === currentMaster;
-      const isPasswordMatch = cleanPass === "pandey123" || isMasterPinMatch;
+      const isCustomPinActive = Boolean(isMasterCustomSet || (serverActiveMasterPin !== "998877"));
 
-      if (isAuthorizedUser && isPasswordMatch) {
+      // Check Master PIN:
+      let isMasterPinMatch = false;
+      if (isCustomPinActive) {
+        // ONLY the latest master PIN matches! Old 998877 or old codes are strictly rejected
+        isMasterPinMatch = cleanPass === currentMaster;
+      } else {
+        isMasterPinMatch = cleanPass === currentMaster || cleanPass === "998877" || cleanPass === "9988";
+      }
+
+      // Check Password:
+      let isPasswordMatch = false;
+      if (serverIsPasswordCustomSet) {
+        // ONLY the latest custom password matches! Old defaults are strictly rejected
+        isPasswordMatch = cleanPass === serverActivePassword;
+      } else {
+        isPasswordMatch = cleanPass === "pandey123";
+      }
+
+      if (isMasterPinMatch || isPasswordMatch) {
         const token = `pms_admin_jwt_${Date.now()}_${crypto.randomBytes(16).toString("hex")}`;
         const targetEmail = cleanAcc.includes("@") ? cleanAcc : "pmesbutwal@gmail.com";
-        recentlyVerifiedSessions.set(targetEmail, { token, email: targetEmail, role: "admin", timestamp: Date.now() });
-        recentlyVerifiedSessions.set("pmesbutwal@gmail.com", { token, email: targetEmail, role: "admin", timestamp: Date.now() });
         return res.json({
           success: true,
           message: "सफलतापूर्वक एडमिन लगइन भयो (Admin logged in successfully).",
@@ -354,84 +418,45 @@ async function startServer() {
 
       return res.status(401).json({
         success: false,
-        message: "गलत पासवर्ड वा विवरण! कृपया सही युजरनेम र पासवर्ड प्रविष्ट गर्नुहोस्।"
+        message: "गलत पासवर्ड वा मास्टर सुरक्षा पिन! कृपया हालको सक्रिय विवरण प्रविष्ट गर्नुहोस्।"
       });
     } catch (e: any) {
       res.status(500).json({ success: false, message: e.message || "Login failed" });
     }
   });
 
-  // Direct login from Authorized Email (e.g. pmesbutwal@gmail.com)
-  app.post("/api/auth/login-authorized-email", (req, res) => {
-    try {
-      const { email = "" } = req.body || {};
-      const cleanEmail = (typeof email === "string" ? email : "").trim().toLowerCase();
-
-      const authorizedEmails = [
-        "pmesbutwal@gmail.com",
-        "pandeymobilestore@gmail.com",
-        "admin@pandeymobile.com",
-        "admin@gmail.com"
-      ];
-
-      const isAuthorized =
-        authorizedEmails.includes(cleanEmail) ||
-        cleanEmail.includes("pmesbutwal") ||
-        cleanEmail.includes("pandeymobile");
-
-      if (!isAuthorized) {
-        return res.status(403).json({
-          success: false,
-          message: "यो इमेल अधिकृत एडमिन इमेल होइन। कृपया आधिकारिक इमेल प्रयोग गर्नुहोस्।"
-        });
-      }
-
-      const token = `pms_admin_authmail_${Date.now()}_${crypto.randomBytes(16).toString("hex")}`;
-      const targetEmail = cleanEmail || "pmesbutwal@gmail.com";
-      recentlyVerifiedSessions.set(targetEmail, { token, email: targetEmail, role: "admin", timestamp: Date.now() });
-      recentlyVerifiedSessions.set("pmesbutwal@gmail.com", { token, email: targetEmail, role: "admin", timestamp: Date.now() });
-
-      return res.json({
-        success: true,
-        message: `अधिकृत इमेल (${targetEmail}) बाट सफलतापूर्वक एडमिन प्रमाणित भयो।`,
-        token,
-        email: targetEmail,
-        role: "admin"
-      });
-    } catch (e: any) {
-      res.status(500).json({ success: false, message: e.message || "Authorized email login failed" });
-    }
-  });
-
   // Verify real 6-digit OTP
   app.post("/api/auth/verify-gmail-otp", (req, res) => {
     try {
-      const { email = "", otp = "", activeMasterPin = "" } = req.body || {};
+      const { email = "", otp = "", activeMasterPin = "", isMasterCustomSet = false } = req.body || {};
       const cleanEmail = (typeof email === "string" ? email : "").trim().toLowerCase();
       const cleanOtp = normalizeOtpDigits(typeof otp === "string" ? otp : "");
 
-      if (!cleanOtp) {
+      if (!cleanOtp || cleanOtp.length !== 6) {
         return res.status(400).json({
           success: false,
-          message: "कृपया ६-अङ्कको ओटिपी प्रविष्ट गर्नुहोस्।"
+          message: "कृपया ठीक ६-अङ्कको ओटिपी वा मास्टर पिन प्रविष्ट गर्नुहोस्।"
         });
       }
 
-      // Master Security PIN: ONLY the active latest master PIN is accepted!
-      // Once changed, previous codes (including old default 998877) are strictly rejected!
+      // Master Security PIN check:
       const currentMaster = (typeof activeMasterPin === "string" && activeMasterPin.length === 6)
         ? activeMasterPin
         : serverActiveMasterPin;
 
-      const isMasterPin = cleanOtp === currentMaster;
+      const isCustomMasterActive = Boolean(isMasterCustomSet || (serverActiveMasterPin !== "998877"));
+
+      // If master PIN is custom set, ONLY the current master PIN is accepted! Old 998877 is rejected.
+      const isMasterPin = isCustomMasterActive
+        ? cleanOtp === currentMaster
+        : (cleanOtp === currentMaster || cleanOtp === "998877");
+
       if (isMasterPin) {
         const token = `pms_admin_jwt_${Date.now()}_${crypto.randomBytes(16).toString("hex")}`;
         const targetEmail = cleanEmail || "pmesbutwal@gmail.com";
-        recentlyVerifiedSessions.set(targetEmail, { token, email: targetEmail, role: "admin", timestamp: Date.now() });
-        recentlyVerifiedSessions.set("pmesbutwal@gmail.com", { token, email: targetEmail, role: "admin", timestamp: Date.now() });
         return res.json({
           success: true,
-          message: "सफलतापूर्वक एडमिन प्रमाणित भयो (Verified successfully).",
+          message: "सक्रिय मास्टर पिन मार्फत सफलतापूर्वक एडमिन प्रमाणित भयो।",
           token,
           email: targetEmail,
           role: "admin",
@@ -439,23 +464,7 @@ async function startServer() {
         });
       }
 
-      // 1. Anti-race condition: Check recently verified cache (handles double-clicks or auto-submit + button click)
-      const recent = recentlyVerifiedSessions.get(cleanEmail) || 
-        recentlyVerifiedSessions.get("pmesbutwal@gmail.com") ||
-        (cleanOtp ? Array.from(recentlyVerifiedSessions.values()).find(r => Date.now() - r.timestamp < 45000) : null);
-      
-      if (recent && Date.now() - recent.timestamp < 45000) {
-        return res.json({
-          success: true,
-          message: "जिमेल ओटिपी सफलतापूर्वक प्रमाणित भयो (Gmail OTP verified successfully).",
-          token: recent.token,
-          email: recent.email,
-          role: recent.role,
-          verifiedAt: recent.timestamp
-        });
-      }
-
-      // 2. Lookup session by email or alias
+      // Lookup active session by email or alias
       let session = activeOtpStore.get(cleanEmail);
       if (!session && (cleanEmail === "admin" || cleanEmail.includes("pmes") || cleanEmail.includes("pandey"))) {
         session = activeOtpStore.get("pmesbutwal@gmail.com") || activeOtpStore.get("admin");
@@ -468,7 +477,7 @@ async function startServer() {
         return res.status(400).json({
           success: false,
           errorType: "EXPIRED_SESSION",
-          message: "ओटिपी सेसन समाप्त भयो वा फेला परेन। कृपया नयाँ ओटिपी पठाउनुहोस् (OTP session expired. Please request a new OTP)."
+          message: "ओटिपी सेसन समाप्त भयो वा फेला परेन। कृपया नयाँ कोड पठाउनुहोस् वा मास्टर पिन प्रविष्ट गर्नुहोस्।"
         });
       }
 
@@ -478,7 +487,7 @@ async function startServer() {
         return res.status(400).json({
           success: false,
           errorType: "EXPIRED_OTP",
-          message: "ओटिपीको समय समाप्त भइसकेको छ। कृपया नयाँ कोड पठाउनुहोस् (OTP has expired. Please request a new code)."
+          message: "ओटिपीको समय समाप्त भइसकेको छ। कृपया नयाँ कोड पठाउनुहोस्।"
         });
       }
 
@@ -488,11 +497,11 @@ async function startServer() {
         return res.status(400).json({
           success: false,
           errorType: "MAX_ATTEMPTS_EXCEEDED",
-          message: "अधिकतम प्रयास नाघ्यो। नयाँ ओटिपी अनुरोध गर्नुहोस् (Maximum attempts exceeded)."
+          message: "अधिकतम प्रयास नाघ्यो। नयाँ ओटिपी अनुरोध गर्नुहोस्।"
         });
       }
 
-      // 3. STRICT VALIDATION: Check against valid OTPs
+      // STRICT VALIDATION against dispatched OTPs
       const isMatch = Array.isArray(session.otps) ? session.otps.includes(cleanOtp) : (session as any).otp === cleanOtp;
       if (!isMatch) {
         session.attempts += 1;
@@ -501,11 +510,11 @@ async function startServer() {
         return res.status(400).json({
           success: false,
           errorType: "INVALID_OTP",
-          message: `गलत ओटिपी कोड! तपाईंको जिमेलमा आएको ठीक ६ अङ्क प्रविष्ट गर्नुहोस् (बाँकी प्रयास: ${attemptsLeft})।`
+          message: `गलत ओटिपी कोड! तपाईंको जिमेलमा आएको कोड वा सक्रिय ६-अङ्कको मास्टर पिन प्रविष्ट गर्नुहोस् (बाँकी प्रयास: ${attemptsLeft})।`
         });
       }
 
-      // Success: Consume OTP and cache token to protect against race conditions
+      // Success: Consume OTP
       const role = session.role || "admin";
       activeOtpStore.delete(cleanEmail);
       activeOtpStore.delete("admin");
@@ -513,10 +522,7 @@ async function startServer() {
       savePersistentOtps(activeOtpStore);
 
       const token = `pms_admin_jwt_${Date.now()}_${crypto.randomBytes(16).toString("hex")}`;
-      recentlyVerifiedSessions.set(cleanEmail, { token, email: cleanEmail, role, timestamp: Date.now() });
-      recentlyVerifiedSessions.set("pmesbutwal@gmail.com", { token, email: cleanEmail, role, timestamp: Date.now() });
-
-      res.json({
+      return res.json({
         success: true,
         message: "जिमेल ओटिपी सफलतापूर्वक प्रमाणित भयो (Gmail OTP verified successfully).",
         token,

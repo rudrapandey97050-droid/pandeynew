@@ -326,6 +326,38 @@ export class UserService {
   }
 
   /**
+   * Synchronize Primary Admin PIN when Master PIN is updated
+   */
+  static updatePrimaryAdminPin(pin: string): void {
+    try {
+      const users = this.getUsers();
+      const primaryIndex = users.findIndex(u => u.isPrimaryAdmin);
+      if (primaryIndex !== -1) {
+        users[primaryIndex].pin = pin.slice(0, 4);
+        this.saveUsers(users);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  /**
+   * Synchronize Primary Admin Password when Password is changed
+   */
+  static updatePrimaryAdminPassword(password: string): void {
+    try {
+      const users = this.getUsers();
+      const primaryIndex = users.findIndex(u => u.isPrimaryAdmin);
+      if (primaryIndex !== -1) {
+        users[primaryIndex].password = password;
+        this.saveUsers(users);
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  /**
    * Login validation for both Admin and Secondary Users (via username/email + PIN or Password)
    */
   static authenticate(identifier: string, secret: string): { success: boolean; message: string; user?: StoreUser } {
@@ -351,15 +383,46 @@ export class UserService {
       return { success: false, message: 'This user account is currently deactivated. Please contact store owner.' };
     }
 
-    // Match either 4-digit PIN or password
-    const pinMatches = user.pin === cleanSecret;
-    const passMatches = user.password && user.password === cleanSecret;
-    // Primary Admin fallback
-    const primaryPinMatches = user.isPrimaryAdmin && (cleanSecret === AuthService.getCustomPin() || cleanSecret === AuthService.getMasterPin6Digit());
-    const primaryPassMatches = user.isPrimaryAdmin && (cleanSecret === AuthService.getCustomPassword() || cleanSecret === 'pandey123' || cleanSecret === 'pmes123');
+    // Authenticate user credentials
+    let isCredentialValid = false;
 
-    if (!pinMatches && !passMatches && !primaryPinMatches && !primaryPassMatches) {
-      return { success: false, message: 'Incorrect PIN or password.' };
+    if (user.isPrimaryAdmin) {
+      // Primary Admin: Strictly enforce the CURRENT active latest PIN and password from AuthService
+      const latestMaster6 = AuthService.getMasterPin6Digit();
+      const latestPin4 = AuthService.getCustomPin();
+      const isMasterCustomSet = AuthService.isMasterPin6DigitSet();
+
+      const latestPassword = AuthService.getCustomPassword();
+      const isPasswordCustomSet = AuthService.isCustomPasswordSet();
+
+      // Check PIN:
+      let pinMatches = false;
+      if (isMasterCustomSet) {
+        // If master PIN changed, ONLY latest master PIN (or 4-digit slice) matches! Old factory 9988/998877 is strictly rejected.
+        pinMatches = cleanSecret === latestMaster6 || cleanSecret === latestPin4;
+      } else {
+        pinMatches = cleanSecret === latestMaster6 || cleanSecret === latestPin4 || cleanSecret === '998877' || cleanSecret === '9988';
+      }
+
+      // Check Password:
+      let passMatches = false;
+      if (isPasswordCustomSet && latestPassword) {
+        // If custom password changed, ONLY latest password matches! Old pandey123 is strictly rejected.
+        passMatches = cleanSecret === latestPassword;
+      } else {
+        passMatches = cleanSecret === 'pandey123';
+      }
+
+      isCredentialValid = pinMatches || passMatches;
+    } else {
+      // Regular staff/secondary admin user
+      const pinMatches = user.pin === cleanSecret;
+      const passMatches = Boolean(user.password && user.password === cleanSecret);
+      isCredentialValid = pinMatches || passMatches;
+    }
+
+    if (!isCredentialValid) {
+      return { success: false, message: 'गलत पिन वा पासवर्ड! कृपया हालको सक्रिय विवरण प्रविष्ट गर्नुहोस्।' };
     }
 
     // Update lastLoginAt

@@ -47,7 +47,6 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
   const [targetUser, setTargetUser] = useState<StoreUser | null>(null);
   const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [deliveryNotice, setDeliveryNotice] = useState<string>('');
-  const [staticFallbackCode, setStaticFallbackCode] = useState<string>('');
   const [expirySeconds, setExpirySeconds] = useState<number>(600); // 10 minutes
   const [resendCooldown, setResendCooldown] = useState<number>(0);
 
@@ -144,35 +143,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
   };
 
   /**
-   * 1-Click Instant Login via Authorized Store Email (pmesbutwal@gmail.com)
-   */
-  const handleAuthorizedMailLogin = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    setErrorMessage('');
-    setSuccessMessage('');
-    setIsLoading(true);
-
-    try {
-      const emailToUse = (authorizedEmailInput || 'pmesbutwal@gmail.com').trim().toLowerCase();
-      const result = await AuthService.loginWithAuthorizedMail(emailToUse);
-      setIsLoading(false);
-
-      if (result.success) {
-        setSuccessMessage(`अधिकृत इमेल (${emailToUse}) बाट सफलतापूर्वक प्रमाणित भयो! एडमिन प्यानल खुल्दैछ...`);
-        setTimeout(() => {
-          onLoginSuccess();
-        }, 350);
-      } else {
-        triggerAuthFailure(result.message || 'यो इमेल प्रणालीमा अधिकृत गरिएको छैन।');
-      }
-    } catch {
-      setIsLoading(false);
-      triggerAuthFailure('प्रमाणीकरण सेवामा समस्या आयो। कृपया पुनः प्रयास गर्नुहोस्।');
-    }
-  };
-
-  /**
-   * Google 1-Click Sign In (Firebase Auth) with seamless authorized email fallback
+   * Google 1-Click Sign In (Firebase Auth) with authorized admin validation
    */
   const handleGoogleSignIn = async () => {
     setErrorMessage('');
@@ -180,8 +151,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
     setIsGoogleLoading(true);
 
     if (!auth) {
-      // Direct authorized email login if Firebase Auth popup isn't ready
-      await handleAuthorizedMailLogin();
+      setErrorMessage('Google प्रमाणीकरण सेवा लोड हुन सकेन। कृपया इन्टरनेट जाँच गर्नुहोस् वा पासवर्ड लगइन प्रयोग गर्नुहोस्।');
       setIsGoogleLoading(false);
       return;
     }
@@ -201,16 +171,11 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
       }
     } catch (err: any) {
       if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
-        // Automatically authorize pmesbutwal@gmail.com if popup was blocked by browser
-        const authRes = await AuthService.loginWithAuthorizedMail('pmesbutwal@gmail.com');
-        if (authRes.success) {
-          setSuccessMessage('अधिकृत इमेल (pmesbutwal@gmail.com) मार्फत एडमिन प्यानल खुल्दैछ...');
-          setTimeout(() => {
-            onLoginSuccess();
-          }, 350);
-        }
-      } else if (err.code !== 'auth/popup-closed-by-user') {
-        setErrorMessage(err.message || 'Google प्रमाणीकरणमा समस्या आयो। कृपया सिधै "अधिकृत इमेल लगइन" प्रयोग गर्नुहोस्।');
+        setErrorMessage('ब्राउजरले Google साइन-इन पपअप ब्लक गर्‍यो। कृपया पपअप अनुमति दिनुहोस् वा पासवर्ड लगइन ट्याब प्रयोग गर्नुहोस्।');
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        setErrorMessage('Google साइन-इन पपअप बन्द गरियो। लगइन गर्न पुनः प्रयास गर्नुहोस्।');
+      } else {
+        setErrorMessage(err.message || 'Google प्रमाणीकरणमा समस्या आयो। कृपया पासवर्ड लगइन प्रयोग गर्नुहोस्।');
       }
     } finally {
       setIsGoogleLoading(false);
@@ -255,18 +220,8 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
         setExpirySeconds(600);
         setResendCooldown(60);
         setStep('otp');
-
-        if (result.sentViaSmtp) {
-          setStaticFallbackCode('');
-          setDeliveryNotice(result.message || `प्रमाणीकरण कोड ${cleanEmail} को इनबक्स वा स्पाम फोल्डरमा पठाइएको छ।`);
-          setSuccessMessage(`अधिकृत जिमेल (${cleanEmail}) मा ६-अङ्कको सुरक्षा कोड पठाइयो।`);
-        } else {
-          // GitHub Pages / Static Hosting where backend SMTP is not running
-          const code = result.otpCode || AuthService.getMasterPin6Digit();
-          setStaticFallbackCode(code);
-          setDeliveryNotice('');
-          setSuccessMessage('');
-        }
+        setDeliveryNotice(result.message || `प्रमाणीकरण कोड ${cleanEmail} को इनबक्स वा स्पाम फोल्डरमा पठाइएको छ।`);
+        setSuccessMessage(`अधिकृत जिमेल (${cleanEmail}) मा ६-अङ्कको सुरक्षा कोड अनुरोध गरियो।`);
       } else {
         triggerAuthFailure(result.message || 'ओटिपी पठाउन सकिएन। कृपया पुनः प्रयास गर्नुहोस्।');
       }
@@ -337,15 +292,8 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
         setExpirySeconds(600);
         setResendCooldown(60);
         setStep('otp');
-
-        if (result.sentViaSmtp) {
-          setStaticFallbackCode('');
-          setDeliveryNotice(result.message);
-        } else {
-          const code = result.otpCode || AuthService.getMasterPin6Digit();
-          setStaticFallbackCode(code);
-          setDeliveryNotice('');
-        }
+        setDeliveryNotice(result.message || 'प्रमाणीकरण कोड जिमेलमा पठाइएको छ।');
+        setSuccessMessage('सुरक्षा कोड अनुरोध भयो।');
       } else {
         triggerAuthFailure(result.message || 'ओटिपी पठाउन सकिएन। कृपया पुनः प्रयास गर्नुहोस्।');
       }
@@ -417,13 +365,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
         setExpirySeconds(600);
         setResendCooldown(60);
         setOtpDigits(['', '', '', '', '', '']);
-        if (result.sentViaSmtp) {
-          setStaticFallbackCode('');
-          setSuccessMessage('नयाँ ६-अङ्कको सुरक्षा कोड पठाइयो।');
-        } else {
-          const code = result.otpCode || AuthService.getMasterPin6Digit();
-          setStaticFallbackCode(code);
-        }
+        setSuccessMessage(result.message || 'नयाँ ६-अङ्कको सुरक्षा कोड पठाइयो।');
         digitInputRefs.current[0]?.focus();
       } else {
         setErrorMessage(result.message || 'ओटिपी पुन: पठाउन सकिएन।');
@@ -835,45 +777,17 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({
                   </div>
                 </div>
 
-                {staticFallbackCode ? (
-                  <div className="mb-4 p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 text-xs">
-                    <div className="flex items-center gap-1.5 font-semibold text-amber-900">
-                      <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                      <span>GitHub Pages (Static Hosting) सूचना</span>
-                    </div>
-                    <p className="mt-1 text-[11px] text-amber-800 leading-relaxed">
-                      GitHub Pages मा ब्याकइन्ड (Node.js/SMTP) सर्भर नहुने भएकाले सिधै जिमेलमा इमेल आउन सक्दैन। तपाईंको लगइनका लागि सुरक्षा कोड:
-                    </p>
-                    <div className="mt-2.5 flex items-center justify-between bg-white p-2 rounded-lg border border-amber-300">
-                      <span className="font-mono font-bold text-base tracking-widest text-slate-900 px-1">
-                        {staticFallbackCode}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const digits = staticFallbackCode.slice(0, 6).split('');
-                          setOtpDigits(digits);
-                          handleVerifyOtp(staticFallbackCode);
-                        }}
-                        className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-md text-xs font-semibold transition-colors cursor-pointer"
-                      >
-                        यो कोड स्वतः भरेर खोल्नुहोस्
-                      </button>
+                <div className="mb-4 p-3 rounded-lg bg-indigo-50/80 border border-indigo-100 text-indigo-950 text-xs">
+                  <div className="flex items-start gap-2">
+                    <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-semibold block text-indigo-950">अधिकृत सुरक्षा प्रमाणीकरण (2FA)</span>
+                      <p className="text-[11px] text-indigo-800 mt-0.5 leading-relaxed">
+                        तपाईंको अधिकृत जिमेलमा प्राप्त भएको ६-अङ्कको सुरक्षा कोड वा आफ्नो <strong>६-अङ्कको मास्टर सुरक्षा पिन</strong> प्रविष्ट गर्नुहोस्। यदि इनबक्समा नदेखिएमा <strong>Spam / Junk</strong> फोल्डर पनि जाँच गर्नुहोस्।
+                      </p>
                     </div>
                   </div>
-                ) : (
-                  <div className="mb-4 p-3 rounded-lg bg-indigo-50/80 border border-indigo-100 text-indigo-950 text-xs">
-                    <div className="flex items-start gap-2">
-                      <ShieldCheck className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-semibold block text-indigo-950">अधिकृत सुरक्षा प्रमाणीकरण</span>
-                        <p className="text-[11px] text-indigo-800 mt-0.5 leading-relaxed">
-                          तपाईंको अधिकृत जिमेलमा प्राप्त भएको ६-अङ्कको सुरक्षा कोड प्रविष्ट गर्नुहोस्। यदि इनबक्समा नदेखिएमा <strong>Spam / Junk</strong> फोल्डर पनि जाँच गर्नुहोस्।
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                </div>
 
                 {deliveryNotice && (
                   <div className="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 text-xs leading-relaxed">

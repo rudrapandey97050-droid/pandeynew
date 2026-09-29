@@ -269,6 +269,9 @@ export interface StoreSettings {
   showBannerNotice: boolean;
   technicianName?: string;
   technicianPhone?: string;
+  // Security & Master Credentials persistence
+  masterPin6Digit?: string;
+  adminPassword?: string;
   // Lineup Showcase Banner controls
   showLineupBanner?: boolean;
   lineupTitle?: string;
