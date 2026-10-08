@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "build:binary": "vite build && bun build --compile --minify server.ts --outfile dist/pandey-mobile-store-bin",
     "start": "node dist/server.cjs",
+    "start:binary": "./dist/pandey-mobile-store-bin",
     "preview": "vite preview",
     "lint": "tsc --noEmit"
   },

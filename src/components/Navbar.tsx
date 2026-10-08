@@ -7,7 +7,8 @@ import {
   X,
   RefreshCw,
   History,
-  Clock
+  Clock,
+  Smartphone
 } from 'lucide-react';
 import { StoreSettings } from '../types.ts';
 import { DataStorageService } from '../services/dataStorage.ts';
@@ -24,6 +25,7 @@ interface NavbarProps {
   searchQuery: string;
   onSearchChange: (q: string) => void;
   onForceRefresh?: () => void;
+  onSwitchToMobileView?: () => void;
 }
 
 type TabKey = 'store' | 'iphone' | 'samsung' | 'android' | 'preowned' | 'upcoming' | 'tradein' | 'repair';
@@ -38,7 +40,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onScrollToProducts,
   searchQuery,
   onSearchChange,
-  onForceRefresh
+  onForceRefresh,
+  onSwitchToMobileView
 }) => {
   const [activeTab, setActiveTab] = useState<TabKey | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -359,9 +362,22 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             </nav>
 
-            {/* Right Action Icons: Refresh, Search & WhatsApp */}
-            <div className="flex items-center space-x-3.5 shrink-0 text-[#1d1d1f]/80">
+            {/* Right Action Icons: Mobile Switcher, Refresh, Search & WhatsApp */}
+            <div className="flex items-center space-x-2.5 sm:space-x-3.5 shrink-0 text-[#1d1d1f]/80">
               
+              {/* Mobile App View Switcher for testing or preference */}
+              {onSwitchToMobileView && (
+                <button
+                  type="button"
+                  onClick={onSwitchToMobileView}
+                  className="hover:text-black transition-colors cursor-pointer flex items-center space-x-1 py-1 px-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 text-[11px] font-bold shadow-2xs"
+                  title="Switch to Mobile App View"
+                >
+                  <Smartphone className="w-3.5 h-3.5 text-indigo-600" />
+                  <span className="hidden sm:inline">मोबाइल भ्यु</span>
+                </button>
+              )}
+
               {/* Fresh Reload Button */}
               <button
                 type="button"

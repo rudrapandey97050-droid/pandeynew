@@ -29,6 +29,7 @@ import { AccountingPlatform } from './components/accounting/AccountingPlatform.t
 import { UpcomingModelPopup } from './components/UpcomingModelPopup.tsx';
 import { PreBookingModal } from './components/PreBookingModal.tsx';
 import { UpcomingModelsPage } from './components/UpcomingModelsPage.tsx';
+import { MobileStoreView } from './components/MobileStoreView.tsx';
 import { VersionService } from './services/versionService.ts';
 import { FirestoreService } from './services/firestoreService.ts';
 import { AppUpdateNotification } from './components/AppUpdateNotification.tsx';
@@ -127,6 +128,41 @@ export const App: React.FC = () => {
   // Pre-Booking Modal State for Upcoming Models
   const [preBookingModel, setPreBookingModel] = useState<UpcomingModel | null>(null);
   const [isPreBookingModalOpen, setIsPreBookingModalOpen] = useState(false);
+
+  // Viewport detection (< 768px) and manual view preference ('auto' | 'mobile' | 'desktop')
+  const [isMobileViewport, setIsMobileViewport] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768;
+    }
+    return false;
+  });
+
+  const [viewPreference, setViewPreference] = useState<'auto' | 'mobile' | 'desktop'>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('pms_view_mode_pref');
+        if (saved === 'mobile' || saved === 'desktop') return saved;
+      } catch (e) {}
+    }
+    return 'auto';
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileViewport(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const handleSetViewPreference = (pref: 'auto' | 'mobile' | 'desktop') => {
+    setViewPreference(pref);
+    try {
+      localStorage.setItem('pms_view_mode_pref', pref);
+    } catch (e) {}
+  };
+
+  const isMobileActive = viewPreference === 'mobile' || (viewPreference === 'auto' && isMobileViewport);
 
   // Load data on mount
   const refreshData = () => {
@@ -535,86 +571,129 @@ export const App: React.FC = () => {
         onNavigateToUpcoming={(slug?: string) => navigateTo('upcoming', slug)}
       />
 
-      {/* Navbar (Visitor mode - no admin controls visible) */}
-      <Navbar
-        storeSettings={storeSettings}
-        onOpenValuationModal={() => handleOpenValuation('sell')}
-        onOpenRepairModal={handleOpenRepair}
-        onOpenRateListModal={() => setIsPriceListModalOpen(true)}
-        onNavigateToUpcoming={() => navigateTo('upcoming')}
-        onSelectCategory={setSelectedCategory}
-        onScrollToProducts={scrollToProducts}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onForceRefresh={refreshData}
-      />
+      {/* DEDICATED TOTAL-DIFFERENT MOBILE APP STOREFRONT (when on mobile viewport or mobile mode) */}
+      {isMobileActive ? (
+        <MobileStoreView
+          products={products}
+          rateList={rateList}
+          storeSettings={storeSettings}
+          onOpenValuationModal={(mode, targetProduct) => {
+            if (targetProduct) {
+              handleExchangeWithProduct(targetProduct);
+            } else {
+              handleOpenValuation(mode || 'sell');
+            }
+          }}
+          onOpenRepairModal={handleOpenRepair}
+          onOpenPriceListModal={() => setIsPriceListModalOpen(true)}
+          onOpenPreBooking={handleOpenPreBooking}
+          onOpenProductDetail={handleOpenProductDetail}
+          onOrderProduct={(p) => setSelectedOrderProduct(p)}
+          onNavigateToUpcoming={(slug) => navigateTo('upcoming', slug)}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onForceRefresh={refreshData}
+          onSwitchToDesktopView={() => handleSetViewPreference('desktop')}
+        />
+      ) : (
+        /* RICH EXPANSIVE DESKTOP STOREFRONT */
+        <div className="flex flex-col flex-1">
+          {/* Banner if desktop view is forced on a mobile phone screen */}
+          {isMobileViewport && viewPreference === 'desktop' && (
+            <div className="bg-indigo-900 text-white px-4 py-2 text-xs flex items-center justify-between z-50 sticky top-0 shadow-md">
+              <span className="font-medium">📱 तपाईं अहिले डेस्कटप भ्युमा हुनुहुन्छ।</span>
+              <button
+                onClick={() => handleSetViewPreference('auto')}
+                className="bg-white text-indigo-950 font-bold px-2.5 py-1 rounded-lg text-[11px] shadow-xs active:scale-95"
+              >
+                मोबाइल एप भ्युमा जानुहोस्
+              </button>
+            </div>
+          )}
 
-      {/* Hero Section */}
-      <Hero
-        storeSettings={storeSettings}
-        onOpenValuationModal={() => handleOpenValuation('sell')}
-        onOpenRepairModal={handleOpenRepair}
-        onOpenUpcoming={() => navigateTo('upcoming')}
-        onScrollToProducts={scrollToProducts}
-      />
+          {/* Navbar (Visitor mode - no admin controls visible) */}
+          <Navbar
+            storeSettings={storeSettings}
+            onOpenValuationModal={() => handleOpenValuation('sell')}
+            onOpenRepairModal={handleOpenRepair}
+            onOpenRateListModal={() => setIsPriceListModalOpen(true)}
+            onNavigateToUpcoming={() => navigateTo('upcoming')}
+            onSelectCategory={setSelectedCategory}
+            onScrollToProducts={scrollToProducts}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onForceRefresh={refreshData}
+            onSwitchToMobileView={() => handleSetViewPreference('mobile')}
+          />
 
-      {/* Products Catalog Section */}
-      <ProductSection
-        products={products}
-        selectedCategory={selectedCategory}
-        onSelectCategory={setSelectedCategory}
-        onSelectProduct={handleOpenProductDetail}
-        onExchangeWithThis={handleExchangeWithProduct}
-        onOrderProduct={(p) => setSelectedOrderProduct(p)}
-        searchQuery={searchQuery}
-        storeSettings={storeSettings}
-      />
+          {/* Hero Section */}
+          <Hero
+            storeSettings={storeSettings}
+            onOpenValuationModal={() => handleOpenValuation('sell')}
+            onOpenRepairModal={handleOpenRepair}
+            onOpenUpcoming={() => navigateTo('upcoming')}
+            onScrollToProducts={scrollToProducts}
+          />
 
-      {/* Express Repair Section */}
-      <RepairSection
-        onOpenRepairModal={handleOpenRepair}
-      />
+          {/* Products Catalog Section */}
+          <ProductSection
+            products={products}
+            selectedCategory={selectedCategory}
+            onSelectCategory={setSelectedCategory}
+            onSelectProduct={handleOpenProductDetail}
+            onExchangeWithThis={handleExchangeWithProduct}
+            onOrderProduct={(p) => setSelectedOrderProduct(p)}
+            searchQuery={searchQuery}
+            storeSettings={storeSettings}
+          />
 
-      {/* Why Pandey Mobile Store Section */}
-      <WhyPandeySection
-        storeSettings={storeSettings}
-        onOpenValuationModal={() => handleOpenValuation('sell')}
-      />
+          {/* Express Repair Section */}
+          <RepairSection
+            onOpenRepairModal={handleOpenRepair}
+          />
 
-      {/* Customer Reviews & Testimonials (Social Proof from Firestore) */}
-      <CustomerReviews
-        onOpenValuationModal={() => handleOpenValuation('sell')}
-        onOpenRepairModal={handleOpenRepair}
-      />
+          {/* Why Pandey Mobile Store Section */}
+          <WhyPandeySection
+            storeSettings={storeSettings}
+            onOpenValuationModal={() => handleOpenValuation('sell')}
+          />
 
-      {/* Google Maps Store Location Section */}
-      <section id="store-location" className="py-12 bg-slate-50 border-t border-slate-200/70">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-8 space-y-2">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-200 inline-block">
-              Store Location & Google Map Link
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-              Visit Our Store at Traffic Chowk, Butwal
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-              Pandey Mobile Store is situated at Traffic Chowk, Main Road, Butwal. Visit us for instant 32-point spot valuations, device exchange, certified smartphones, and express certified repairs.
-            </p>
-          </div>
-          <GoogleMapsStoreLocator height="auto" showCard={true} storeSettings={storeSettings} />
+          {/* Customer Reviews & Testimonials (Social Proof from Firestore) */}
+          <CustomerReviews
+            onOpenValuationModal={() => handleOpenValuation('sell')}
+            onOpenRepairModal={handleOpenRepair}
+          />
+
+          {/* Google Maps Store Location Section */}
+          <section id="store-location" className="py-12 bg-slate-50 border-t border-slate-200/70">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="text-center max-w-2xl mx-auto mb-8 space-y-2">
+                <span className="text-[11px] font-bold uppercase tracking-widest text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-200 inline-block">
+                  Store Location & Google Map Link
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+                  Visit Our Store at Traffic Chowk, Butwal
+                </h2>
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  Pandey Mobile Store is situated at Traffic Chowk, Main Road, Butwal. Visit us for instant 32-point spot valuations, device exchange, certified smartphones, and express certified repairs.
+                </p>
+              </div>
+              <GoogleMapsStoreLocator height="auto" showCard={true} storeSettings={storeSettings} />
+            </div>
+          </section>
+
+          {/* Footer (Visitor mode - no admin controls visible) */}
+          <Footer
+            storeSettings={storeSettings}
+            onOpenValuationModal={() => handleOpenValuation('sell')}
+            onOpenRepairModal={handleOpenRepair}
+            onOpenUpcoming={() => navigateTo('upcoming')}
+          />
+
+          {/* WhatsApp Quick Chat */}
+          <FloatingWhatsApp whatsappNumber={storeSettings.whatsapp} />
         </div>
-      </section>
-
-      {/* Footer (Visitor mode - no admin controls visible) */}
-      <Footer
-        storeSettings={storeSettings}
-        onOpenValuationModal={() => handleOpenValuation('sell')}
-        onOpenRepairModal={handleOpenRepair}
-        onOpenUpcoming={() => navigateTo('upcoming')}
-      />
-
-      {/* WhatsApp Quick Chat */}
-      <FloatingWhatsApp whatsappNumber={storeSettings.whatsapp} />
+      )}
 
       {/* MODALS */}
 
