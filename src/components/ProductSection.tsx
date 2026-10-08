@@ -98,7 +98,7 @@ export const ProductSection: React.FC<ProductSectionProps> = ({
   const showAppleShowcase = selectedCategory === 'all' || selectedCategory === 'Apple' || selectedCategory === 'iPhone';
 
   return (
-    <section id="products-section" className="py-12 bg-slate-50">
+    <section id="products-section" className="py-12 bg-slate-50 dark:bg-slate-950 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         
         {/* Apple Showcase Banner (When Apple or All is active and no active search filter) */}
@@ -113,13 +113,13 @@ export const ProductSection: React.FC<ProductSectionProps> = ({
         )}
 
         {/* Section Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-200 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
           <div>
-            <div className="inline-flex items-center space-x-1.5 text-xs font-bold text-indigo-600 uppercase tracking-wider mb-1">
+            <div className="inline-flex items-center space-x-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1">
               <Smartphone className="w-4 h-4" />
               <span>Available Inventory at Traffic Chowk</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 font-serif">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white font-serif">
               {getCategoryTitle()}
             </h2>
           </div>
@@ -131,45 +131,45 @@ export const ProductSection: React.FC<ProductSectionProps> = ({
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-2 cursor-pointer shadow-xs ${
                 inStockOnly
                   ? 'bg-emerald-600 text-white ring-2 ring-emerald-400'
-                  : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                  : 'bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700'
               }`}
             >
               <span className={`w-2 h-2 rounded-full ${inStockOnly ? 'bg-white animate-pulse' : 'bg-emerald-500'}`} />
               <span>{inStockOnly ? 'स्टक उपलब्ध मात्र (In Stock Only)' : 'स्टक भएका मात्र देखाउनुहोस्'}</span>
             </button>
-            <div className="flex items-center space-x-1.5 text-xs text-slate-500 font-medium bg-white px-3 py-1.5 rounded-xl border border-slate-200">
+            <div className="flex items-center space-x-1.5 text-xs text-slate-500 dark:text-slate-400 font-medium bg-white dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800">
               <span><strong>{filteredProducts.length}</strong> devices</span>
               <span>•</span>
-              <span className="text-emerald-700 font-semibold">{inStockCount} In Stock</span>
+              <span className="text-emerald-700 dark:text-emerald-400 font-semibold">{inStockCount} In Stock</span>
             </div>
           </div>
         </div>
 
         {/* Global Empty State: No products available in store */}
         {visibleProducts.length === 0 ? (
-          <div className="bg-white rounded-3xl border border-slate-200 p-12 sm:p-16 text-center space-y-4 shadow-xs">
-            <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center mx-auto shadow-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-12 sm:p-16 text-center space-y-4 shadow-xs">
+            <div className="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto shadow-xs">
               <ShoppingBag className="w-8 h-8" />
             </div>
             <div className="space-y-1 max-w-md mx-auto">
-              <h3 className="text-lg font-black text-slate-900 font-serif">No products available</h3>
-              <p className="text-xs text-slate-500 leading-relaxed">
+              <h3 className="text-lg font-black text-slate-900 dark:text-white font-serif">No products available</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                 There are currently no phones listed in our storefront catalog. New inventory and latest smartphones are added directly from the store Admin Panel.
               </p>
             </div>
-            <div className="pt-2 flex flex-wrap items-center justify-center gap-2 text-xs text-slate-500">
-              <span className="px-3 py-1 bg-slate-100 rounded-full font-medium">📍 {storeSettings?.address || 'Traffic Chowk'}, {storeSettings?.city || 'Butwal'}</span>
-              <span className="px-3 py-1 bg-slate-100 rounded-full font-medium">📞 {storeSettings?.phone1 || '9847460603'}</span>
+            <div className="pt-2 flex flex-wrap items-center justify-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full font-medium">📍 {storeSettings?.address || 'Traffic Chowk'}, {storeSettings?.city || 'Butwal'}</span>
+              <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full font-medium">📞 {storeSettings?.phone1 || '9847460603'}</span>
             </div>
           </div>
         ) : filteredProducts.length === 0 ? (
           /* Filtered empty state (Search / Category filter yielded no match) */
-          <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center space-y-3 shadow-xs">
-            <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-12 text-center space-y-3 shadow-xs">
+            <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
               <Search className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-slate-800">No Smartphones Found</h3>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+            <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">No Smartphones Found</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
               We couldn't find any phone matching {searchQuery ? `"${searchQuery}"` : 'the selected category'}. Try choosing a different brand or clearing filters.
             </p>
             <button

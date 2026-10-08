@@ -51,7 +51,7 @@ export const GoogleMapsStoreLocator: React.FC<GoogleMapsStoreLocatorProps> = ({
   };
 
   return (
-    <div className={`w-full bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden ${className}`}>
+    <div className={`w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden transition-colors ${className}`}>
       {/* Main Location Card */}
       <div className="p-6 sm:p-8 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white relative overflow-hidden">
         {/* Subtle background glow */}
@@ -105,63 +105,63 @@ export const GoogleMapsStoreLocator: React.FC<GoogleMapsStoreLocatorProps> = ({
 
       {/* Store Information Cards */}
       {showCard && (
-        <div className="p-6 sm:p-8 bg-slate-50/70 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 text-xs">
-          <div className="p-4 bg-white rounded-2xl border border-slate-200/70 shadow-2xs space-y-2">
-            <div className="w-9 h-9 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+        <div className="p-6 sm:p-8 bg-slate-50/70 dark:bg-slate-950/70 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 text-xs">
+          <div className="p-4 bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/70 dark:border-slate-700 shadow-2xs space-y-2">
+            <div className="w-9 h-9 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-xl flex items-center justify-center">
               <MapPin className="w-4 h-4" />
             </div>
-            <h5 className="font-bold text-slate-900 text-sm">Traffic Chowk Landmark</h5>
-            <p className="text-slate-500 text-xs leading-relaxed">
+            <h5 className="font-bold text-slate-900 dark:text-white text-sm">Traffic Chowk Landmark</h5>
+            <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed">
               मेन रोड, ट्रफिक चोक, बुटवल। सजिलै पुग्न सकिने सुविधाजनक लोकेसन।
             </p>
             <a
               href={STORE_LOCATION.googleMapsUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-700 font-bold text-xs pt-1"
+              className="inline-flex items-center gap-1 text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-bold text-xs pt-1"
             >
               <span>गुगल म्याप लिङ्क</span>
               <ExternalLink className="w-3 h-3" />
             </a>
           </div>
 
-          <div className="p-4 bg-white rounded-2xl border border-slate-200/70 shadow-2xs space-y-2">
-            <div className="w-9 h-9 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+          <div className="p-4 bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/70 dark:border-slate-700 shadow-2xs space-y-2">
+            <div className="w-9 h-9 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center">
               <Clock className="w-4 h-4" />
             </div>
-            <h5 className="font-bold text-slate-900 text-sm">पसल खुल्ने समय</h5>
-            <p className="text-slate-500 text-xs leading-relaxed">
+            <h5 className="font-bold text-slate-900 dark:text-white text-sm">पसल खुल्ने समय</h5>
+            <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed">
               बिहान १०:०० बजे देखि बेलुका ८:०० बजे सम्म (आइतबार – शुक्रबार)
             </p>
-            <div className="inline-flex items-center gap-1.5 text-emerald-700 font-bold text-[11px] pt-1">
+            <div className="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400 font-bold text-[11px] pt-1">
               <CheckCircle2 className="w-3.5 h-3.5" />
               <span>आज खुला छ (Open Today)</span>
             </div>
           </div>
 
-          <div className="p-4 bg-white rounded-2xl border border-slate-200/70 shadow-2xs space-y-2">
-            <div className="w-9 h-9 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
+          <div className="p-4 bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/70 dark:border-slate-700 shadow-2xs space-y-2">
+            <div className="w-9 h-9 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center">
               <Phone className="w-4 h-4" />
             </div>
-            <h5 className="font-bold text-slate-900 text-sm">सम्पर्क / फोन नम्बर</h5>
-            <p className="text-slate-500 text-xs leading-relaxed">
+            <h5 className="font-bold text-slate-900 dark:text-white text-sm">सम्पर्क / फोन नम्बर</h5>
+            <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed">
               लोकेसन बुझ्न वा मोबाइल स्टक बुझ्न सिधै कल गर्नुहोस्:
             </p>
-            <div className="font-bold text-slate-900 text-xs pt-1 space-y-0.5">
+            <div className="font-bold text-slate-900 dark:text-white text-xs pt-1 space-y-0.5">
               <p>📞 {STORE_LOCATION.phone}</p>
               <p>📱 {STORE_LOCATION.phone2}</p>
             </div>
           </div>
 
-          <div className="p-4 bg-white rounded-2xl border border-slate-200/70 shadow-2xs space-y-2">
-            <div className="w-9 h-9 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
+          <div className="p-4 bg-white dark:bg-slate-800/90 rounded-2xl border border-slate-200/70 dark:border-slate-700 shadow-2xs space-y-2">
+            <div className="w-9 h-9 bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 rounded-xl flex items-center justify-center">
               <ShieldCheck className="w-4 h-4" />
             </div>
-            <h5 className="font-bold text-slate-900 text-sm">स्पट एक्सचेन्ज र मर्मत</h5>
-            <p className="text-slate-500 text-xs leading-relaxed">
+            <h5 className="font-bold text-slate-900 dark:text-white text-sm">स्पट एक्सचेन्ज र मर्मत</h5>
+            <p className="text-slate-500 dark:text-slate-400 text-xs leading-relaxed">
               ३२-पोइन्ट तत्काल भ्यालुएसन, वारेन्टी सहितका फोनहरू र ल्याब मर्मत सेवा उपलब्ध।
             </p>
-            <div className="inline-flex items-center gap-1 text-slate-700 font-semibold text-[11px] pt-1">
+            <div className="inline-flex items-center gap-1 text-slate-700 dark:text-slate-300 font-semibold text-[11px] pt-1">
               <Sparkles className="w-3.5 h-3.5 text-amber-500" />
               <span>अन-द-स्पट सेवा</span>
             </div>

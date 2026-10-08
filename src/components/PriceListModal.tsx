@@ -68,7 +68,7 @@ export const PriceListModal: React.FC<PriceListModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-3 md:p-6 overflow-y-auto">
-      <div className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[94vh] flex flex-col">
+      <div className="relative w-full max-w-5xl bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden my-auto max-h-[94vh] flex flex-col">
         
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 bg-slate-900 text-white shrink-0">
@@ -92,7 +92,7 @@ export const PriceListModal: React.FC<PriceListModalProps> = ({
         </div>
 
         {/* Filter Controls Bar */}
-        <div className="p-4 bg-slate-50 border-b border-slate-200 space-y-3 shrink-0">
+        <div className="p-4 bg-slate-50 dark:bg-slate-950/70 border-b border-slate-200 dark:border-slate-800 space-y-3 shrink-0">
           {/* Top row: Search & Category Tabs */}
           <div className="flex flex-col md:flex-row items-center gap-3">
             <div className="relative flex-1 w-full">
@@ -102,19 +102,19 @@ export const PriceListModal: React.FC<PriceListModalProps> = ({
                 placeholder="Search smartphone or accessory model, brand, storage..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-hidden font-medium"
+                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-800 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-hidden font-medium"
               />
             </div>
 
             {/* Category Tabs */}
-            <div className="flex items-center bg-slate-200/80 p-1 rounded-xl w-full md:w-auto text-xs font-bold">
+            <div className="flex items-center bg-slate-200/80 dark:bg-slate-800 p-1 rounded-xl w-full md:w-auto text-xs font-bold">
               <button
                 type="button"
                 onClick={() => setSelectedCategory('All')}
-                className={`flex-1 md:flex-initial px-3 py-1.5 rounded-lg transition-all flex items-center justify-center space-x-1.5 ${
+                className={`flex-1 md:flex-initial px-3 py-1.5 rounded-lg transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
                   selectedCategory === 'All'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 <span>All Items</span>
@@ -124,10 +124,10 @@ export const PriceListModal: React.FC<PriceListModalProps> = ({
               <button
                 type="button"
                 onClick={() => setSelectedCategory('Smartphone')}
-                className={`flex-1 md:flex-initial px-3 py-1.5 rounded-lg transition-all flex items-center justify-center space-x-1.5 ${
+                className={`flex-1 md:flex-initial px-3 py-1.5 rounded-lg transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
                   selectedCategory === 'Smartphone'
-                    ? 'bg-white text-indigo-700 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-400 shadow-xs'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 <Smartphone className="w-3.5 h-3.5" />
@@ -219,7 +219,7 @@ export const PriceListModal: React.FC<PriceListModalProps> = ({
           ) : (
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px] tracking-wider sticky top-0">
+                <tr className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold uppercase text-[10px] tracking-wider sticky top-0">
                   <th className="py-2.5 px-3">Item / Model</th>
                   <th className="py-2.5 px-3">Category</th>
                   <th className="py-2.5 px-3">Storage / Spec</th>
@@ -229,13 +229,13 @@ export const PriceListModal: React.FC<PriceListModalProps> = ({
                   <th className="py-2.5 px-3">Stock Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-slate-700">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
                 {filtered.map(item => {
                   const itemPreOwned = isPreOwned(item);
                   const itemAccessory = isAccessory(item);
 
                   return (
-                    <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                    <tr key={item.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/60 transition-colors">
                       <td className="py-3 px-3">
                         <div className="flex items-center space-x-2.5">
                           <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${

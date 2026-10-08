@@ -562,7 +562,7 @@ export const App: React.FC = () => {
 
   // 4. Visitor Storefront View
   return (
-    <div className="min-h-screen bg-white flex flex-col font-sans text-slate-900 selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-white dark:bg-slate-950 flex flex-col font-sans text-slate-900 dark:text-slate-100 selection:bg-indigo-500 selection:text-white transition-colors duration-200">
       <AppUpdateNotification onManualRefresh={refreshData} />
       
       {/* Automatic Upcoming Model Popup (Triggers after 2-3s on visitor first arrival) */}
@@ -665,16 +665,16 @@ export const App: React.FC = () => {
           />
 
           {/* Google Maps Store Location Section */}
-          <section id="store-location" className="py-12 bg-slate-50 border-t border-slate-200/70">
+          <section id="store-location" className="py-12 bg-slate-50 dark:bg-slate-900/60 border-t border-slate-200/70 dark:border-slate-800 transition-colors">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="text-center max-w-2xl mx-auto mb-8 space-y-2">
-                <span className="text-[11px] font-bold uppercase tracking-widest text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-200 inline-block">
+                <span className="text-[11px] font-bold uppercase tracking-widest text-indigo-700 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-3 py-1 rounded-full border border-indigo-200 dark:border-indigo-800 inline-block">
                   Store Location & Google Map Link
                 </span>
-                <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+                <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
                   Visit Our Store at Traffic Chowk, Butwal
                 </h2>
-                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                   Pandey Mobile Store is situated at Traffic Chowk, Main Road, Butwal. Visit us for instant 32-point spot valuations, device exchange, certified smartphones, and express certified repairs.
                 </p>
               </div>

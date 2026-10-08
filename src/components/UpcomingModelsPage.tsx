@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UpcomingModel, StoreSettings } from '../types.ts';
 import { DataStorageService } from '../services/dataStorage.ts';
+import { ThemeToggle } from './ThemeToggle.tsx';
 import {
   Sparkles,
   Calendar,
@@ -143,11 +144,12 @@ export const UpcomingModelsPage: React.FC<UpcomingModelsPageProps> = ({
             )}
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3">
             <span className="hidden sm:inline-flex items-center space-x-1 px-2.5 py-1 bg-indigo-500/10 border border-indigo-500/20 rounded-full text-xs font-semibold text-indigo-300">
               <Sparkles className="w-3.5 h-3.5 text-slate-300" />
               <span>Official Pre-Booking Portal</span>
             </span>
+            <ThemeToggle variant="icon" />
           </div>
         </div>
       </div>

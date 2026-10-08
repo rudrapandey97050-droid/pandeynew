@@ -28,6 +28,7 @@ import {
 import { Product, RateListItem, StoreSettings, UpcomingModel } from '../types.ts';
 import { formatNPR, formatWhatsAppUrl } from '../utils/formatters.ts';
 import { STORE_LOCATION } from './GoogleMapsStoreLocator.tsx';
+import { ThemeToggle } from './ThemeToggle.tsx';
 
 interface MobileStoreViewProps {
   products: Product[];
@@ -234,7 +235,7 @@ export const MobileStoreView: React.FC<MobileStoreViewProps> = ({
   }, [products, calcTargetProductId]);
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-24 selection:bg-indigo-600 selection:text-white font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 pb-24 selection:bg-indigo-600 selection:text-white font-sans transition-colors duration-200">
       {/* 1. TOP MOBILE APP HEADER */}
       <header className="sticky top-0 z-30 bg-slate-900 text-white shadow-md">
         {/* Top Mini Status Bar */}
@@ -251,15 +252,20 @@ export const MobileStoreView: React.FC<MobileStoreViewProps> = ({
             </span>
           </div>
 
-          {/* Toggle between Mobile & Desktop View */}
-          <button
-            onClick={onSwitchToDesktopView}
-            className="flex items-center space-x-1 text-[10px] bg-slate-800 hover:bg-slate-700 text-indigo-300 px-2 py-0.5 rounded-full border border-slate-700 transition-colors"
-            title="Switch to full desktop view"
-          >
-            <Monitor className="w-3 h-3 text-indigo-400" />
-            <span>डेस्कटप भ्यु</span>
-          </button>
+          <div className="flex items-center space-x-1.5">
+            {/* Global Theme Toggle */}
+            <ThemeToggle variant="compact" />
+
+            {/* Toggle between Mobile & Desktop View */}
+            <button
+              onClick={onSwitchToDesktopView}
+              className="flex items-center space-x-1 text-[10px] bg-slate-800 hover:bg-slate-700 text-indigo-300 px-2 py-0.5 rounded-full border border-slate-700 transition-colors"
+              title="Switch to full desktop view"
+            >
+              <Monitor className="w-3 h-3 text-indigo-400" />
+              <span>डेस्कटप भ्यु</span>
+            </button>
+          </div>
         </div>
 
         {/* Brand Bar with Direct Action Dialers */}
@@ -1165,25 +1171,36 @@ export const MobileStoreView: React.FC<MobileStoreViewProps> = ({
             </div>
           </div>
 
+          {/* Theme & Display Preferences Card */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-3 text-xs">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm">डिस्प्ले थिम (Display Theme)</h4>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">आँखालाई सहज हुने लाइट वा डार्क मोड स्विच गर्नुहोस्</p>
+              </div>
+              <ThemeToggle variant="pill" />
+            </div>
+          </div>
+
           {/* Store Guarantee Badges */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-2 text-xs">
-            <h4 className="font-bold text-slate-900">हाम्रो विशेषता (Why Choose Us)</h4>
-            <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 pt-1">
-              <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                <div className="font-bold text-indigo-700">✓ १००% ओरिजिनल सामान</div>
-                <div className="text-[10px] text-slate-500">पक्का भ्याट बिल र वारेन्टी</div>
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-2xs space-y-2 text-xs">
+            <h4 className="font-bold text-slate-900 dark:text-white">हाम्रो विशेषता (Why Choose Us)</h4>
+            <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 dark:text-slate-300 pt-1">
+              <div className="bg-slate-50 dark:bg-slate-800 p-2 rounded-xl border border-slate-100 dark:border-slate-700">
+                <div className="font-bold text-indigo-700 dark:text-indigo-400">✓ १००% ओरिजिनल सामान</div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400">पक्का भ्याट बिल र वारेन्टी</div>
               </div>
-              <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                <div className="font-bold text-indigo-700">✓ ३० मिनेट मर्मत</div>
-                <div className="text-[10px] text-slate-500">९० दिन ल्याब वारेन्टी</div>
+              <div className="bg-slate-50 dark:bg-slate-800 p-2 rounded-xl border border-slate-100 dark:border-slate-700">
+                <div className="font-bold text-indigo-700 dark:text-indigo-400">✓ ३० मिनेट मर्मत</div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400">९० दिन ल्याब वारेन्टी</div>
               </div>
-              <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                <div className="font-bold text-indigo-700">✓ तुरुन्त एक्सचेन्ज</div>
-                <div className="text-[10px] text-slate-500">उच्चतम मूल्य ग्यारेन्टी</div>
+              <div className="bg-slate-50 dark:bg-slate-800 p-2 rounded-xl border border-slate-100 dark:border-slate-700">
+                <div className="font-bold text-indigo-700 dark:text-indigo-400">✓ तुरुन्त एक्सचेन्ज</div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400">उच्चतम मूल्य ग्यारेन्टी</div>
               </div>
-              <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
-                <div className="font-bold text-indigo-700">✓ डेटा माइग्रेसन फ्री</div>
-                <div className="text-[10px] text-slate-500">सुरक्षित डाटा ट्रान्सफर</div>
+              <div className="bg-slate-50 dark:bg-slate-800 p-2 rounded-xl border border-slate-100 dark:border-slate-700">
+                <div className="font-bold text-indigo-700 dark:text-indigo-400">✓ डेटा माइग्रेसन फ्री</div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400">सुरक्षित डाटा ट्रान्सफर</div>
               </div>
             </div>
           </div>
@@ -1191,7 +1208,7 @@ export const MobileStoreView: React.FC<MobileStoreViewProps> = ({
       )}
 
       {/* 10. FIXED NATIVE MOBILE BOTTOM NAVIGATION BAR */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-2xl px-2 py-1.5 safe-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800 shadow-2xl px-2 py-1.5 safe-bottom">
         <div className="max-w-md mx-auto grid grid-cols-5 items-center text-center">
           {/* Nav Item: Home / Phones */}
           <button
@@ -1200,7 +1217,7 @@ export const MobileStoreView: React.FC<MobileStoreViewProps> = ({
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             className={`flex flex-col items-center py-1 transition-colors ${
-              activeTab === 'phones' ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-slate-800'
+              activeTab === 'phones' ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             <div className="relative">
@@ -1219,7 +1236,7 @@ export const MobileStoreView: React.FC<MobileStoreViewProps> = ({
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             className={`flex flex-col items-center py-1 transition-colors ${
-              activeTab === 'exchange' ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-slate-800'
+              activeTab === 'exchange' ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             <div className="relative">
@@ -1238,7 +1255,7 @@ export const MobileStoreView: React.FC<MobileStoreViewProps> = ({
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             className={`flex flex-col items-center py-1 transition-colors ${
-              activeTab === 'repair' ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-slate-800'
+              activeTab === 'repair' ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             <div className="relative">
@@ -1257,7 +1274,7 @@ export const MobileStoreView: React.FC<MobileStoreViewProps> = ({
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             className={`flex flex-col items-center py-1 transition-colors ${
-              activeTab === 'rates' ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:text-slate-800'
+              activeTab === 'rates' ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             <Tag className="w-5 h-5" />

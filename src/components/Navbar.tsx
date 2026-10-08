@@ -13,6 +13,7 @@ import {
 import { StoreSettings } from '../types.ts';
 import { DataStorageService } from '../services/dataStorage.ts';
 import { formatWhatsAppUrl } from '../utils/formatters.ts';
+import { ThemeToggle } from './ThemeToggle.tsx';
 
 interface NavbarProps {
   storeSettings: StoreSettings;
@@ -241,9 +242,9 @@ export const Navbar: React.FC<NavbarProps> = ({
         </div>
       )}
 
-      {/* Apple Global Nav Bar (Exact Apple Light Style, 44px, translucent blur, SF typography) */}
+      {/* Apple Global Nav Bar (Exact Apple Light/Dark Style, 44px, translucent blur, SF typography) */}
       <header
-        className="sticky top-0 z-50 bg-[rgba(255,255,255,0.92)] text-[#1d1d1f] backdrop-blur-xl border-b border-black/[0.08] transition-colors"
+        className="sticky top-0 z-50 bg-[rgba(255,255,255,0.92)] dark:bg-[rgba(15,23,42,0.92)] text-[#1d1d1f] dark:text-slate-100 backdrop-blur-xl border-b border-black/[0.08] dark:border-white/[0.08] transition-colors"
         onMouseLeave={handleMouseLeave}
       >
         <div className="max-w-[1024px] mx-auto px-4 sm:px-6">
@@ -257,13 +258,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onSearchChange('');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className="text-[#1d1d1f] hover:text-black transition-all shrink-0 flex items-center space-x-2 cursor-pointer group"
+              className="text-[#1d1d1f] dark:text-white hover:text-black dark:hover:text-white transition-all shrink-0 flex items-center space-x-2 cursor-pointer group"
               title="Pandey Mobile Store"
             >
-              <div className="w-6 h-6 rounded-full bg-black flex items-center justify-center p-0.5 border border-slate-300 shadow-xs group-hover:scale-105 transition-transform overflow-hidden">
+              <div className="w-6 h-6 rounded-full bg-black flex items-center justify-center p-0.5 border border-slate-300 dark:border-slate-700 shadow-xs group-hover:scale-105 transition-transform overflow-hidden">
                 <img src="/favicon.svg" alt="PMS Logo" className="w-full h-full object-contain" />
               </div>
-              <span className="font-bold tracking-tight text-[13px] text-[#1d1d1f]">
+              <span className="font-bold tracking-tight text-[13px] text-[#1d1d1f] dark:text-white">
                 Pandey Mobile
               </span>
             </button>
@@ -276,7 +277,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onMouseEnter={() => handleMouseEnter('store')}
                 onClick={() => handleAction({ category: 'All', search: '' })}
                 className={`py-2 px-2 transition-colors cursor-pointer ${
-                  activeTab === 'store' ? 'text-black font-semibold' : 'text-[#1d1d1f]/80 hover:text-black'
+                  activeTab === 'store' ? 'text-black dark:text-white font-semibold' : 'text-[#1d1d1f]/80 dark:text-slate-300 hover:text-black dark:hover:text-white'
                 }`}
               >
                 Store
@@ -287,7 +288,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onMouseEnter={() => handleMouseEnter('iphone')}
                 onClick={() => handleAction({ category: 'Apple', search: '' })}
                 className={`py-2 px-2 transition-colors cursor-pointer ${
-                  activeTab === 'iphone' ? 'text-black font-semibold' : 'text-[#1d1d1f]/80 hover:text-black'
+                  activeTab === 'iphone' ? 'text-black dark:text-white font-semibold' : 'text-[#1d1d1f]/80 dark:text-slate-300 hover:text-black dark:hover:text-white'
                 }`}
               >
                 iPhone
@@ -298,7 +299,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onMouseEnter={() => handleMouseEnter('samsung')}
                 onClick={() => handleAction({ category: 'Samsung', search: '' })}
                 className={`py-2 px-2 transition-colors cursor-pointer ${
-                  activeTab === 'samsung' ? 'text-black font-semibold' : 'text-[#1d1d1f]/80 hover:text-black'
+                  activeTab === 'samsung' ? 'text-black dark:text-white font-semibold' : 'text-[#1d1d1f]/80 dark:text-slate-300 hover:text-black dark:hover:text-white'
                 }`}
               >
                 Samsung
@@ -309,7 +310,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onMouseEnter={() => handleMouseEnter('android')}
                 onClick={() => handleAction({ category: 'Xiaomi', search: '' })}
                 className={`py-2 px-2 transition-colors cursor-pointer ${
-                  activeTab === 'android' ? 'text-black font-semibold' : 'text-[#1d1d1f]/80 hover:text-black'
+                  activeTab === 'android' ? 'text-black dark:text-white font-semibold' : 'text-[#1d1d1f]/80 dark:text-slate-300 hover:text-black dark:hover:text-white'
                 }`}
               >
                 Android
@@ -320,7 +321,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onMouseEnter={() => handleMouseEnter('preowned')}
                 onClick={() => handleAction({ category: 'Pre-Owned', search: '' })}
                 className={`py-2 px-2 transition-colors cursor-pointer ${
-                  activeTab === 'preowned' ? 'text-black font-semibold' : 'text-[#1d1d1f]/80 hover:text-black'
+                  activeTab === 'preowned' ? 'text-black dark:text-white font-semibold' : 'text-[#1d1d1f]/80 dark:text-slate-300 hover:text-black dark:hover:text-white'
                 }`}
               >
                 Pre-Owned
@@ -331,7 +332,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onMouseEnter={() => handleMouseEnter('upcoming')}
                 onClick={() => handleAction({ modal: 'upcoming' })}
                 className={`py-2 px-2 transition-colors cursor-pointer ${
-                  activeTab === 'upcoming' ? 'text-black font-semibold' : 'text-[#1d1d1f]/80 hover:text-black'
+                  activeTab === 'upcoming' ? 'text-black dark:text-white font-semibold' : 'text-[#1d1d1f]/80 dark:text-slate-300 hover:text-black dark:hover:text-white'
                 }`}
                 title="Upcoming Models & Launch Radar"
               >
@@ -343,7 +344,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onMouseEnter={() => handleMouseEnter('tradein')}
                 onClick={() => handleAction({ modal: 'valuation' })}
                 className={`py-2 px-2 transition-colors cursor-pointer ${
-                  activeTab === 'tradein' ? 'text-black font-semibold' : 'text-[#1d1d1f]/80 hover:text-black'
+                  activeTab === 'tradein' ? 'text-black dark:text-white font-semibold' : 'text-[#1d1d1f]/80 dark:text-slate-300 hover:text-black dark:hover:text-white'
                 }`}
               >
                 Trade In
@@ -354,7 +355,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onMouseEnter={() => handleMouseEnter('repair')}
                 onClick={() => handleAction({ modal: 'repair' })}
                 className={`py-2 px-2 transition-colors cursor-pointer ${
-                  activeTab === 'repair' ? 'text-black font-semibold' : 'text-[#1d1d1f]/80 hover:text-black'
+                  activeTab === 'repair' ? 'text-black dark:text-white font-semibold' : 'text-[#1d1d1f]/80 dark:text-slate-300 hover:text-black dark:hover:text-white'
                 }`}
               >
                 Repair
@@ -362,21 +363,11 @@ export const Navbar: React.FC<NavbarProps> = ({
 
             </nav>
 
-            {/* Right Action Icons: Mobile Switcher, Refresh, Search & WhatsApp */}
-            <div className="flex items-center space-x-2.5 sm:space-x-3.5 shrink-0 text-[#1d1d1f]/80">
+            {/* Right Action Icons: Global Theme Toggle, Refresh, Search & WhatsApp */}
+            <div className="flex items-center space-x-2 sm:space-x-2.5 shrink-0 text-[#1d1d1f]/80 dark:text-slate-300">
               
-              {/* Mobile App View Switcher for testing or preference */}
-              {onSwitchToMobileView && (
-                <button
-                  type="button"
-                  onClick={onSwitchToMobileView}
-                  className="hover:text-black transition-colors cursor-pointer flex items-center space-x-1 py-1 px-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 text-[11px] font-bold shadow-2xs"
-                  title="Switch to Mobile App View"
-                >
-                  <Smartphone className="w-3.5 h-3.5 text-indigo-600" />
-                  <span className="hidden sm:inline">मोबाइल भ्यु</span>
-                </button>
-              )}
+              {/* Global Theme Toggle: Light / Dark Mode */}
+              <ThemeToggle variant="icon" />
 
               {/* Fresh Reload Button */}
               <button
@@ -400,11 +391,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }, 300);
                 }}
                 disabled={isRefreshing}
-                className="hover:text-black transition-colors cursor-pointer flex items-center space-x-1 py-1 px-1.5 rounded-lg hover:bg-black/5 text-[#1d1d1f]/80"
+                className="hover:text-black dark:hover:text-white transition-colors cursor-pointer flex items-center space-x-1 py-1 px-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 text-[#1d1d1f]/80 dark:text-slate-300"
                 title="Refresh latest stock and updates"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-black' : ''}`} />
-                <span className="text-[11px] font-medium hidden sm:inline text-[#1d1d1f]">Refresh</span>
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-black dark:text-white' : ''}`} />
+                <span className="text-[11px] font-medium hidden sm:inline text-[#1d1d1f] dark:text-slate-200">Refresh</span>
               </button>
 
               <button
@@ -417,7 +408,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     setIsDesktopSearchFocused(false);
                   }
                 }}
-                className="hover:text-black transition-colors cursor-pointer"
+                className="hover:text-black dark:hover:text-white transition-colors cursor-pointer p-1"
                 title="Search phones"
               >
                 <Search className="w-3.5 h-3.5" />
@@ -427,7 +418,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 href={formatWhatsAppUrl(storeSettings.whatsapp, 'Hello Pandey Mobile Store, I have an inquiry.')}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="hover:text-black transition-colors cursor-pointer flex items-center space-x-1"
+                className="hover:text-black dark:hover:text-white transition-colors cursor-pointer flex items-center space-x-1 p-1"
                 title="WhatsApp Inquiry"
               >
                 <ShoppingBag className="w-3.5 h-3.5" />
@@ -436,7 +427,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               {/* Mobile Hamburger */}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden hover:text-black cursor-pointer ml-1"
+                className="md:hidden hover:text-black dark:hover:text-white cursor-pointer ml-1 p-1"
               >
                 {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
               </button>
@@ -1557,10 +1548,18 @@ export const Navbar: React.FC<NavbarProps> = ({
           </div>
         )}
 
-        {/* Mobile Drawer Menu (Clean Apple Light Theme, No golden letters, No rates) */}
+        {/* Mobile Drawer Menu (Clean Apple Light/Dark Theme) */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-[#d2d2d7] px-6 py-6 space-y-5 text-[#1d1d1f] min-h-[calc(100vh-44px)] animate-in slide-in-from-top-2 duration-200">
+          <div className="md:hidden bg-white dark:bg-slate-900 border-t border-[#d2d2d7] dark:border-slate-800 px-6 py-6 space-y-5 text-[#1d1d1f] dark:text-slate-100 min-h-[calc(100vh-44px)] animate-in slide-in-from-top-2 duration-200">
             
+            {/* Theme Toggle row in Mobile Drawer */}
+            <div className="flex items-center justify-between py-2 px-3 bg-[#f5f5f7] dark:bg-slate-800 border border-[#d2d2d7] dark:border-slate-700 rounded-xl">
+              <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                Store Theme (थीम)
+              </span>
+              <ThemeToggle variant="pill" />
+            </div>
+
             {/* Search Input */}
             <div className="relative">
               <div className="relative flex items-center">
@@ -1586,7 +1585,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       setIsMobileSearchFocused(false);
                     }
                   }}
-                  className="w-full bg-[#f5f5f7] text-[#1d1d1f] text-xs pl-9 pr-8 py-2.5 rounded-xl border border-[#d2d2d7]"
+                  className="w-full bg-[#f5f5f7] dark:bg-slate-800 text-[#1d1d1f] dark:text-white text-xs pl-9 pr-8 py-2.5 rounded-xl border border-[#d2d2d7] dark:border-slate-700"
                 />
                 {searchQuery && (
                   <button
@@ -1765,20 +1764,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }
                 }, 300);
               }}
-              className="w-full text-left py-2.5 px-3 bg-[#f5f5f7] border border-[#d2d2d7] rounded-xl text-[#1d1d1f] font-medium flex items-center justify-between hover:bg-[#e8e8ed] transition-colors"
+              className="w-full text-left py-2.5 px-3 bg-[#f5f5f7] dark:bg-slate-800 border border-[#d2d2d7] dark:border-slate-700 rounded-xl text-[#1d1d1f] dark:text-slate-200 font-medium flex items-center justify-between hover:bg-[#e8e8ed] dark:hover:bg-slate-700 transition-colors"
             >
               <div className="flex items-center space-x-2">
-                <RefreshCw className={`w-4 h-4 text-[#1d1d1f] ${isRefreshing ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 text-[#1d1d1f] dark:text-slate-200 ${isRefreshing ? 'animate-spin' : ''}`} />
                 <span className="text-xs font-semibold">Refresh Store Stock & Data</span>
               </div>
-              <span className="text-[10px] bg-black/5 text-[#1d1d1f] px-2 py-0.5 rounded-full font-mono">
+              <span className="text-[10px] bg-black/5 dark:bg-white/10 text-[#1d1d1f] dark:text-slate-200 px-2 py-0.5 rounded-full font-mono">
                 Fresh
               </span>
             </button>
 
             {/* Store Information */}
-            <div className="pt-2 text-xs text-[#86868b] space-y-1.5">
-              <p className="text-[#1d1d1f] font-semibold">{storeSettings.storeName}</p>
+            <div className="pt-2 text-xs text-[#86868b] dark:text-slate-400 space-y-1.5">
+              <p className="text-[#1d1d1f] dark:text-white font-semibold">{storeSettings.storeName}</p>
               <p>{storeSettings.address}, {storeSettings.city}</p>
               <p>Hotline: {storeSettings.phone1}</p>
               <a
