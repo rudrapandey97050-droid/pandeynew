@@ -59,12 +59,11 @@ export const Footer: React.FC<FooterProps> = ({
           {/* Col 1: Brand Info */}
           <div className="space-y-3">
             <div className="flex items-center space-x-2.5">
-              <div className="w-8 h-8 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center font-bold">
+              <div className="w-8 h-8 rounded-full bg-black border border-white/20 flex items-center justify-center overflow-hidden shadow-sm">
                 <img
-                  src="https://1000logos.net/wp-content/uploads/2017/02/Apple-Logo.png"
-                  alt="Apple Logo"
-                  className="w-4 h-4 object-contain brightness-0 invert"
-                  referrerPolicy="no-referrer"
+                  src="/favicon.svg"
+                  alt="PMS Logo"
+                  className="w-full h-full object-contain"
                 />
               </div>
               <span className="text-base font-bold font-serif">{storeSettings.storeName}</span>

@@ -269,6 +269,11 @@ export interface StoreSettings {
   showBannerNotice: boolean;
   technicianName?: string;
   technicianPhone?: string;
+  // Brand Logo & SEO Domain Settings
+  logoUrl?: string;
+  websiteUrl?: string;
+  metaTitle?: string;
+  metaDescription?: string;
   // Security & Master Credentials persistence
   masterPin6Digit?: string;
   adminPassword?: string;

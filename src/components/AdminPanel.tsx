@@ -199,16 +199,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         {/* Brand & Admin Badge */}
         <div className="p-5 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
-            <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/15 text-white flex items-center justify-center font-bold shadow-md">
+            <div className="w-9 h-9 rounded-full bg-black border border-white/20 text-white flex items-center justify-center overflow-hidden shadow-md">
               <img
-                src="https://1000logos.net/wp-content/uploads/2017/02/Apple-Logo.png"
-                alt="Apple Logo"
-                className="w-4 h-4 object-contain brightness-0 invert"
-                referrerPolicy="no-referrer"
+                src="/favicon.svg"
+                alt="PMS Logo"
+                className="w-full h-full object-contain"
               />
             </div>
             <div>
-              <h2 className="text-sm font-bold font-serif leading-tight text-white">Pandey Store</h2>
+              <h2 className="text-sm font-bold font-serif leading-tight text-white">Pandey Mobile Store</h2>
               <span className="text-[10px] text-emerald-400 font-bold tracking-wide flex items-center space-x-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span>AUTHORIZED ADMIN</span>

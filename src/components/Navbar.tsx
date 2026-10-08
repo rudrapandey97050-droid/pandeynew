@@ -254,11 +254,13 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onSearchChange('');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className="text-[#1d1d1f] hover:text-black transition-opacity shrink-0 flex items-center space-x-2 cursor-pointer group"
+              className="text-[#1d1d1f] hover:text-black transition-all shrink-0 flex items-center space-x-2 cursor-pointer group"
               title="Pandey Mobile Store"
             >
-              <Apple className="w-4 h-4 text-[#1d1d1f] fill-current" />
-              <span className="font-semibold tracking-tight text-[13px] text-[#1d1d1f] hidden sm:inline">
+              <div className="w-6 h-6 rounded-full bg-black flex items-center justify-center p-0.5 border border-slate-300 shadow-xs group-hover:scale-105 transition-transform overflow-hidden">
+                <img src="/favicon.svg" alt="PMS Logo" className="w-full h-full object-contain" />
+              </div>
+              <span className="font-bold tracking-tight text-[13px] text-[#1d1d1f]">
                 Pandey Mobile
               </span>
             </button>

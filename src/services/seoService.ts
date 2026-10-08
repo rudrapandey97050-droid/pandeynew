@@ -1,10 +1,10 @@
 import { Product } from '../types.ts';
 import { formatNPR } from '../utils/formatters.ts';
 
-const DEFAULT_TITLE = 'Pandey Mobile Store - Butwal, Nepal';
+const DEFAULT_TITLE = 'Pandey Mobile Store: Apple Authorised & Smartphone Hub Butwal';
 const DEFAULT_DESC =
-  'Pandey Mobile Store is a dedicated smartphone store located at Traffic Chowk, Butwal, Nepal. We specialize in providing a curated selection of both iPhone and Android smartphones with warranty.';
-const DEFAULT_IMAGE = 'https://1000logos.net/wp-content/uploads/2017/02/Apple-Logo.png';
+  'Pandey Mobile Store is Butwal\'s premier smartphone destination at Traffic Chowk. Genuine iPhones, Android phones, exchange valuation, and chip-level express repairs.';
+const DEFAULT_IMAGE = 'https://pandeymobile.com.np/pms-logo-512.png';
 const CANONICAL_DOMAIN = 'https://pandeymobile.com.np';
 
 function setMetaTag(nameOrProperty: string, value: string, isProperty = false) {

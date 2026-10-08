@@ -345,6 +345,118 @@ export const StoreSettingsManager: React.FC<StoreSettingsManagerProps> = ({
 
           <form onSubmit={handleGeneralSubmit} className="space-y-5">
             
+            {/* GOOGLE SEARCH RESULT & BRAND LOGO PREVIEW (MATCHING USER SCREENSHOT) */}
+            <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-indigo-950 rounded-2xl p-5 text-white border border-slate-800 shadow-md space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                <div className="flex items-center space-x-2.5">
+                  <div className="p-2 bg-indigo-500/20 text-indigo-400 rounded-xl border border-indigo-400/30">
+                    <Globe className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-white">गुगल सर्च प्रिभ्यू तथा ब्रान्ड लोगो (Google Search Snippet & Logo)</h3>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30">
+                        Live Preview
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      गुगल सर्च इन्जिन र ब्राउजर ट्याबमा पसलको लोगो र नाम कसरी देखिन्छ हेर्नुहोस्
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <a
+                    href="/favicon.svg"
+                    download="pms-circular-logo.svg"
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 border border-slate-700"
+                    title="Download Official Logo SVG"
+                  >
+                    <Download className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>लोगो डाउनलोड</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* Exact Google Search Result Card (Matching EvoStore reference) */}
+              <div className="bg-white rounded-2xl p-4 sm:p-5 text-slate-900 border border-slate-200 shadow-sm max-w-xl">
+                <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 block mb-2 font-mono">
+                  Google Search Result Snippet • मोबाइल तथा कम्प्युटर प्रिभ्यू
+                </span>
+
+                {/* Snippet Header: Circular Logo, Site Name, URL & 3 Dots */}
+                <div className="flex items-center space-x-3 mb-1.5">
+                  {/* Circular Black Logo Badge */}
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-black border border-slate-300 shadow-xs flex items-center justify-center p-0.5 shrink-0 overflow-hidden">
+                    <img
+                      src={formData.logoUrl || '/favicon.svg'}
+                      alt="Store Logo"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+
+                  <div className="min-w-0">
+                    <div className="text-xs sm:text-sm font-bold text-slate-900 leading-tight truncate">
+                      {formData.storeName || 'Pandey Mobile Store'}
+                    </div>
+                    <div className="flex items-center space-x-1 text-[11px] text-slate-500 truncate">
+                      <span className="truncate">{formData.websiteUrl || 'https://pandeymobile.com.np'}</span>
+                      <span className="text-slate-400">⋮</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Clickable Blue Google Search Title */}
+                <div className="text-sm sm:text-base font-medium text-[#1a0dab] hover:underline cursor-pointer leading-snug mb-1">
+                  {formData.metaTitle || `${formData.storeName || 'Pandey Mobile Store'}: Apple Authorised & Smartphone Hub Butwal`}
+                </div>
+
+                {/* Snippet Description */}
+                <p className="text-xs text-[#4d5156] leading-relaxed line-clamp-2">
+                  {formData.metaDescription || `${formData.storeName || 'Pandey Mobile Store'} is Butwal's premier smartphone destination at Traffic Chowk. Genuine iPhones, Android phones, exchange valuation, and chip-level express repairs.`}
+                </p>
+              </div>
+
+              {/* Google Search Console Re-indexing Tip */}
+              <div className="bg-indigo-950/60 border border-indigo-500/30 rounded-xl p-3 text-[11px] text-slate-300 space-y-1">
+                <span className="font-bold text-amber-300 flex items-center gap-1.5">
+                  <span>💡 गुगल सर्चमा तुरुन्तै नाम र लोगो अपडेट गराउने विधि (Instant Google Indexing):</span>
+                </span>
+                <p className="leading-relaxed">
+                  गुगलमा साइटको नाम <strong>Pandey Mobile Store</strong> र आधिकारिक <strong>PMS Logo</strong> आउनका लागि आवश्यक सम्पूर्ण <code className="bg-slate-900 px-1 py-0.5 rounded text-indigo-300 font-mono">WebSite JSON-LD</code> र <code className="bg-slate-900 px-1 py-0.5 rounded text-indigo-300 font-mono">favicon.ico/png</code> फाइलहरू वेबसाइटमा सेट भइसकेका छन्। गुगलको क्यास तुरुन्त अपडेट गराउन <strong>Google Search Console</strong> मा गई <code className="bg-slate-900 px-1 py-0.5 rounded text-indigo-300 font-mono">https://pandeymobile.com.np</code> URL Inspect गरेर <strong>"Request Indexing"</strong> क्लिक गर्नुहोस्।
+                </p>
+              </div>
+
+              {/* Domain & Meta Inputs */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                    आधिकारिक वेबसाइट ठेगाना (Official Website URL)
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.websiteUrl || ''}
+                    onChange={(e) => setFormData({ ...formData, websiteUrl: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-mono text-indigo-300 focus:border-indigo-400 focus:outline-hidden"
+                    placeholder="https://pandeymobile.com.np"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                    गुगल सर्च शीर्षक (Search Engine Title)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.metaTitle || ''}
+                    onChange={(e) => setFormData({ ...formData, metaTitle: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-medium text-white focus:border-indigo-400 focus:outline-hidden"
+                    placeholder="Pandey Mobile Store: Apple Authorised & Smartphone Hub Butwal"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Store Name & Tagline */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
