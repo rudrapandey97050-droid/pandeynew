@@ -137,6 +137,79 @@ export class DataStorageService {
   }
 
   /**
+   * Sync with free central server endpoint (/api/store/data).
+   * Ensures that any edits made in Admin are instantly retrieved by visitors.
+   */
+  static async syncWithCentralServer(): Promise<boolean> {
+    if (typeof window === 'undefined') return false;
+    try {
+      const res = await fetch('/api/store/data');
+      if (!res.ok) return false;
+      const json = await res.json();
+      if (!json.success || !json.data) return false;
+
+      const serverData = json.data;
+      let hasUpdates = false;
+
+      if (Array.isArray(serverData.products) && serverData.products.length > 0) {
+        const localProds = this.getProducts();
+        if (JSON.stringify(localProds) !== JSON.stringify(serverData.products)) {
+          localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(serverData.products));
+          hasUpdates = true;
+        }
+      }
+
+      if (Array.isArray(serverData.rateList) && serverData.rateList.length > 0) {
+        const localRates = this.getManualRateList();
+        if (JSON.stringify(localRates) !== JSON.stringify(serverData.rateList)) {
+          localStorage.setItem(STORAGE_KEYS.RATE_LIST, JSON.stringify(serverData.rateList));
+          hasUpdates = true;
+        }
+      }
+
+      if (serverData.storeSettings && typeof serverData.storeSettings === 'object') {
+        const localSettings = this.getStoreSettings();
+        if (JSON.stringify(localSettings) !== JSON.stringify(serverData.storeSettings)) {
+          localStorage.setItem(STORAGE_KEYS.STORE_SETTINGS, JSON.stringify(serverData.storeSettings));
+          hasUpdates = true;
+        }
+      }
+
+      if (hasUpdates) {
+        notifyDataChange('server_synced');
+      }
+      return true;
+    } catch (err) {
+      // Graceful fallback to offline local storage
+      return false;
+    }
+  }
+
+  /**
+   * Push current store inventory, rate list, and settings to central server.
+   */
+  static async pushStoreDataToServer(): Promise<boolean> {
+    if (typeof window === 'undefined') return false;
+    try {
+      const payload = {
+        products: this.getProducts(),
+        rateList: this.getManualRateList(),
+        storeSettings: this.getStoreSettings(),
+        upcomingModels: this.getUpcomingModels(),
+        timestamp: Date.now()
+      };
+      const res = await fetch('/api/store/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Normalize product stock count and availability status.
    * CRITICAL: Admin choice is authoritative!
    * - If admin marks 'In Stock', 'Available', or 'Limited Stock', never force Out of Stock.
@@ -209,6 +282,7 @@ export class DataStorageService {
       const synced: Product[] = products.map(p => this.normalizeProduct(p));
       localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(synced));
       notifyDataChange('products');
+      this.pushStoreDataToServer().catch(() => {});
     } catch (e) {
       console.error('Error saving products', e);
     }
@@ -473,6 +547,7 @@ export class DataStorageService {
     try {
       localStorage.setItem(STORAGE_KEYS.RATE_LIST, JSON.stringify(items));
       notifyDataChange('ratelist');
+      this.pushStoreDataToServer().catch(() => {});
     } catch (e) {
       console.error('Error saving rate list', e);
     }
@@ -524,6 +599,7 @@ export class DataStorageService {
     try {
       localStorage.setItem(STORAGE_KEYS.STORE_SETTINGS, JSON.stringify(settings));
       notifyDataChange('storesettings');
+      this.pushStoreDataToServer().catch(() => {});
       if (syncToCloud) {
         FirestoreService.saveStoreSettings(settings).catch(() => {});
       }

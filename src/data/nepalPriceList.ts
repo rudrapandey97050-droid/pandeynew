@@ -1,4 +1,5 @@
 import { RateListItem } from '../types.ts';
+import { defaultAuthenticRateList } from './initialCatalog.ts';
 
-// Clean initial rate list - No demo rates
-export const initialUsedIPhoneRateList: RateListItem[] = [];
+// Verified authentic rate list for Pandey Mobile Store, Butwal
+export const initialUsedIPhoneRateList: RateListItem[] = defaultAuthenticRateList;

@@ -542,10 +542,83 @@ async function startServer() {
   app.get("/api/storage/status", (req, res) => {
     res.json({
       success: true,
-      mode: "offline-resilient-local",
+      mode: "central-server-synced",
       cloudBillingRequired: false,
-      message: "Pandey Mobile Store is operating on 100% free offline-safe local storage. No Google Cloud Billing required."
+      message: "Pandey Mobile Store is operating on 100% free server-synced storage. No Google Cloud Billing required."
     });
+  });
+
+  // Central Server Store Data Persistence (Free centralized store data for all visitors & admin)
+  const STORE_DATA_FILE = path.join(process.cwd(), "store_inventory_data.json");
+
+  function readStoreDataFile() {
+    try {
+      if (fs.existsSync(STORE_DATA_FILE)) {
+        const raw = fs.readFileSync(STORE_DATA_FILE, "utf-8");
+        return JSON.parse(raw);
+      }
+    } catch (err) {
+      console.error("Error reading store_inventory_data.json:", err);
+    }
+    return null;
+  }
+
+  function writeStoreDataFile(data: any) {
+    try {
+      fs.writeFileSync(STORE_DATA_FILE, JSON.stringify(data, null, 2), "utf-8");
+      return true;
+    } catch (err) {
+      console.error("Error writing store_inventory_data.json:", err);
+      return false;
+    }
+  }
+
+  // GET /api/store/data - Central store state (products, rates, settings, upcoming)
+  app.get("/api/store/data", (req, res) => {
+    try {
+      const data = readStoreDataFile();
+      if (!data) {
+        return res.json({
+          success: true,
+          hasCustomData: false,
+          data: null
+        });
+      }
+      return res.json({
+        success: true,
+        hasCustomData: true,
+        data,
+        updatedAt: data.updatedAt || Date.now()
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // POST /api/store/data - Push updates from admin to central server
+  app.post("/api/store/data", (req, res) => {
+    try {
+      const incoming = req.body;
+      if (!incoming || typeof incoming !== "object") {
+        return res.status(400).json({ success: false, error: "Invalid store payload" });
+      }
+
+      const existing = readStoreDataFile() || {};
+      const merged = {
+        ...existing,
+        ...incoming,
+        updatedAt: Date.now()
+      };
+
+      writeStoreDataFile(merged);
+      return res.json({
+        success: true,
+        message: "Store data successfully saved on central server.",
+        updatedAt: merged.updatedAt
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
   });
 
   // Gemini AI Product Description Generator API

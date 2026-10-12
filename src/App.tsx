@@ -184,6 +184,18 @@ export const App: React.FC = () => {
       refreshData();
     });
 
+    // 2.5. Central server data synchronization (Zero-cost real-time inventory & rate sync for all visitors)
+    DataStorageService.syncWithCentralServer().then(() => {
+      refreshData();
+    }).catch(() => {});
+
+    // Periodic check every 45 seconds to keep inventory fresh across devices
+    const serverSyncInterval = setInterval(() => {
+      DataStorageService.syncWithCentralServer().then(() => {
+        refreshData();
+      }).catch(() => {});
+    }, 45000);
+
     // 3. Real-time Firebase Cloud Database synchronization (Always Online / Live Data)
     FirestoreService.initConnection().then(() => {
       // Pull fresh data immediately on load to prevent stale offline caching
@@ -300,6 +312,7 @@ export const App: React.FC = () => {
       cleanupVersionService();
       cleanupGmailScheduler();
       unsubscribeDataSync();
+      clearInterval(serverSyncInterval);
       if (unsubProd) unsubProd();
       if (unsubRate) unsubRate();
       if (unsubUp) unsubUp();
